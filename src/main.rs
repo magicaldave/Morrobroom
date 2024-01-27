@@ -1,16 +1,14 @@
-// First things first:
-// 1. Open the file
-// 2. Find a brush , according to bracketed bounds?
-// 3. Entities, if they exist, will be defined in another block containing its brushes.
-// 4.
-use nalgebra::{DMatrix, DVector, Matrix3, Point3, Point4, Vector, Vector3};
-use ordered_float::OrderedFloat;
-use regex::Regex;
-use std::collections::{HashMap, HashSet};
-use std::env;
-use std::fs;
-const EPSILON: f64 = 1e-10;
 use delaunator::{triangulate, Point};
+use nalgebra::Vector3;
+use tes3::{
+    esp::*,
+    nif::{self, TextureSource},
+};
+
+const EPSILON: f64 = 1e-10;
+
+// This will probably be necessary later, as tes3 lib uses hashsets for basically everything
+// use std::collections::{HashMap, HashSet};
 
 // In effect, this struct represents each line of a brush.
 // The stored data is derived from the contents of the map file and differs quite a bit, however
@@ -58,15 +56,17 @@ impl Plane {
 // This has nothing to do with the plane itself, but rather, is later used for deriving texture info.
 #[derive(Debug, Clone)]
 struct Face {
-    vertices: Vec<(f64, f64, f64)>,
-    plane_index: usize, // Index of the associated plane in the vector of planes
+    vertices: Vec<Vector3<f64>>,
+    plane_index: usize, // Index of the associated plane in the vector of planes, used for texture gathering
+    triangles: Vec<Vec<usize>>,
 }
 
 impl Face {
-    fn new(vertices: Vec<(f64, f64, f64)>, plane_index: usize) -> Self {
+    fn new(vertices: Vec<Vector3<f64>>, plane_index: usize) -> Self {
         Face {
             vertices,
             plane_index,
+            triangles: Vec::new(),
         }
     }
 }
@@ -168,7 +168,7 @@ fn main() {
                         "Intersection Point: X:{}, Y:{}, Z:{}",
                         intersection_point.0, intersection_point.2, intersection_point.1
                     );
-                    vertices.push((
+                    vertices.push(Vector3::new(
                         intersection_point.0,
                         intersection_point.2,
                         intersection_point.1,
@@ -178,30 +178,77 @@ fn main() {
         }
     }
 
-    let faces = associate_vertices_with_planes(&planes, &vertices);
+    let mut faces = associate_vertices_with_planes(&planes, &vertices, |v| (v.x, v.y, v.z));
+
+    triangulate_faces(&mut faces, &vertices);
+
+    let mut shape = nif::NiTriShape::default();
+    let mut shape_data = nif::NiTriShapeData::default();
+
+    for vertex in vertices {
+        shape_data
+            .vertices
+            .push([vertex[0] as f32, vertex[2] as f32, vertex[1] as f32].into());
+    }
+
+    println!("{:?}", shape_data.vertices);
 
     // Now `faces` contains the associations between vertices and planes
     for face in &faces {
         println!(
-            "Face with Plane Index {}: {:?}",
-            face.plane_index, face.vertices
+            "Face with Plane Index {}: {:?}, {:?}",
+            face.plane_index, face.vertices, face.triangles
         );
+        for tri_indices in &face.triangles {
+            let triangle: [u16; 3] = [
+                tri_indices[0] as u16,
+                tri_indices[1] as u16,
+                tri_indices[2] as u16,
+            ];
+            shape_data.triangles.push(triangle);
+        }
     }
 
-    // triangulate_faces(&faces);
+    let mut ni_stream = nif::NiStream::default();
+    let shape_index = ni_stream.insert(shape);
+    ni_stream.roots = vec![shape_index.cast()];
+    let shape_data_index = ni_stream.insert(shape_data);
+
+    // "tx_b_n_wood elf_m_h02"
+
+    assign_texture(
+        &mut ni_stream,
+        shape_index.into(),
+        "tx_b_n_wood elf_m_h02.dds",
+    );
+
+    if let Some(shape) = ni_stream.get_mut(shape_index) {
+        shape.geometry_data = shape_data_index.cast(); // downcasts to NiLink<NiTriShapeData> to NiLink<GeometryData>
+    };
+
+    ni_stream.save_path("test.nif");
 }
 
-fn associate_vertices_with_planes(planes: &[Plane], vertices: &[(f64, f64, f64)]) -> Vec<Face> {
+fn associate_vertices_with_planes<T>(
+    planes: &[Plane],
+    vertices: &[T],
+    extract_coords: impl Fn(&T) -> (f64, f64, f64),
+) -> Vec<Face> {
     planes
         .iter()
         .enumerate()
         .flat_map(|(plane_index, plane)| {
-            let adjusted_vertices: Vec<(f64, f64, f64)> =
-                vertices.iter().map(|&(x, y, z)| (x, z, y)).collect();
-
-            let associated_vertices: Vec<(f64, f64, f64)> = adjusted_vertices
+            let adjusted_vertices: Vec<Vector3<f64>> = vertices
                 .iter()
-                .filter(|&vertex| plane.contains_point(*vertex))
+                .map(|vertex| {
+                    let (x, y, z) = extract_coords(vertex);
+                    Vector3::new(x, z, y)
+                })
+                .collect();
+
+            let associated_vertices: Vec<Vector3<f64>> = adjusted_vertices
+                .iter()
+                .filter(|&vertex| plane.contains_point((vertex.x, vertex.y, vertex.z)))
                 .cloned()
                 .collect();
 
@@ -214,37 +261,84 @@ fn associate_vertices_with_planes(planes: &[Plane], vertices: &[(f64, f64, f64)]
         .collect()
 }
 
-// fn triangulate_faces(faces: &[Face]) {
-//     for face in faces {
-//         // Determine which dimensions vary among the vertices
-//         let mut varying_dimensions: Vec<usize> = Vec::new();
-//         for dim in 0..3 {
-//             let values: Vec<f64> = face.vertices.iter().map(|&vertex| vertex[dim]).collect();
-//             let unique_values: Vec<f64> = values.into_iter().collect();
+fn triangulate_faces(faces: &mut Vec<Face>, vertices: &[Vector3<f64>]) {
+    for face in faces.iter_mut() {
+        // Determine which dimensions vary among the vertices
+        let mut varying_dimensions: Vec<usize> = Vec::new();
+        for dim in 0..3 {
+            let values: Vec<f64> = face.vertices.iter().map(|vertex| vertex[dim]).collect();
 
-//             if unique_values.len() > 1 {
-//                 varying_dimensions.push(dim);
-//             }
-//         }
+            // Check if all values are not the same
+            if values.windows(2).any(|w| w[0] != w[1]) {
+                varying_dimensions.push(dim);
+            }
+        }
 
-//         // Extract points for triangulation
-//         let points: Vec<Point> = face
-//             .vertices
-//             .iter()
-//             .map(|&(x, y, z)| Point {
-//                 x: y, // Use the first varying dimension as x
-//                 y: z, // Use the second varying dimension as y
-//             })
-//             .collect();
+        // Extract points for triangulation, including the vertex, and its original index
+        let points: Vec<(Point, usize)> = face
+            .vertices
+            .iter()
+            .map(|vertex| {
+                let adjusted_vertex = Vector3::new(
+                    vertex[0], // Use the first varying dimension as x
+                    vertex[2], // Use the second varying dimension as z (adjusting for y and z flip)
+                    vertex[1], // Use the third varying dimension as y (adjusting for y and z flip)
+                );
+                let index_in_vertices =
+                    vertices.iter().position(|v| *v == adjusted_vertex).unwrap();
+                (
+                    Point {
+                        x: vertex[varying_dimensions[0]],
+                        y: vertex[varying_dimensions[1]],
+                    },
+                    index_in_vertices,
+                )
+            })
+            .collect();
 
-//         // Triangulate the face
-//         let result = triangulate(&points);
+        // Extract the points from the tuple and convert to Vec<Point>
+        let point_vec: Vec<Point> = points.clone().into_iter().map(|(point, _)| point).collect();
 
-//         // Print or use the triangles
-//         println!("{:?}", result.triangles);
-//     }
-// }
+        // Triangulate the face
+        let result = triangulate(&point_vec);
 
-// Print or use the hull
-// println!("{:?}\n\n\n", result.hull);
-// println!("Points: {:?}, Count: {}", points, points.len());
+        // Translate Delaunator indices to original vertex indices
+        let original_triangles: Vec<Vec<usize>> = result
+            .triangles
+            .chunks_exact(3)
+            .map(|chunk| {
+                chunk
+                    .iter()
+                    .map(|delaunator_index| points[*delaunator_index].1)
+                    .collect()
+            })
+            .collect();
+
+        face.triangles = original_triangles;
+    }
+}
+
+fn assign_texture(
+    stream: &mut nif::NiStream,
+    object: nif::NiLink<nif::NiTriShape>,
+    file_path: &str,
+) {
+    // Create and insert a NiTexturingProperty and NiSourceTexture.
+    let tex_prop_link = stream.insert(nif::NiTexturingProperty::default());
+    let texture_link = stream.insert(nif::NiSourceTexture::default());
+
+    // Update the base map texture.
+    let tex_prop = stream.get_mut(tex_prop_link).unwrap();
+    tex_prop.texture_maps.resize(7, None); // not sure why
+    let mut base_map = nif::Map::default();
+    base_map.texture = texture_link.cast();
+    tex_prop.texture_maps[0] = Some(nif::TextureMap::Map(base_map));
+
+    // Update the texture source path.
+    let texture = stream.get_mut(texture_link).unwrap();
+    texture.source = nif::TextureSource::External(file_path.into());
+
+    // Assign the tex prop to the target object
+    let object = stream.get_mut(object).unwrap();
+    object.properties.push(tex_prop_link.cast());
+}
