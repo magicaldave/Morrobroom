@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 delaunator = "1.0.2"
+imagesize = "0.12.0"
 nalgebra = "0.32.3"
 shalrath = "0.2.5"
 
@@ -14,3 +15,8 @@ shalrath = "0.2.5"
 git = "https://github.com/Greatness7/tes3"
 branch = "dev"
 features = ["esp", "nif", "nightly"]
+
+
+[dependencies.shambler]
+git = "https://github.com/magicaldave/shambler"
+branch = "master"
