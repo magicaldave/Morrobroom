@@ -156,6 +156,7 @@ impl MapData {
         Some(
             extensions
                 .iter()
+                .rev()
                 .flat_map(|extension| {
                     find_file(config, format!("Textures/{}.{}", name, extension).as_str())
                 })
