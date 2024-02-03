@@ -1,10 +1,18 @@
+use imagesize::size;
+use openmw_cfg::{find_file, get_config, Ini};
 use shalrath::repr::*;
 use shambler::{
     brush::BrushId,
-    face::{FaceNormals, FaceTriangleIndices, FaceVertices},
-    GeoMap, Vector3 as SV3,
+    entity::EntityId,
+    face::{FaceNormals, FaceTriangleIndices, FaceUvs, FaceVertices},
+    texture::{TextureId, TextureSizes},
+    GeoMap, Textures, TexturesTag, Vector2 as SV2, Vector3 as SV3,
 };
-use std::{collections::HashSet, env, fs};
+use std::{
+    collections::{BTreeMap, HashMap, HashSet},
+    env, fs,
+    path::PathBuf,
+};
 use tes3::{
     esp::*,
     nif::{
@@ -26,6 +34,9 @@ struct MapData {
     inverted_face_tri_indices: FaceTriangleIndices,
     flat_normals: FaceNormals,
     smooth_normals: FaceNormals,
+    texture_names: HashSet<String>,
+    texture_paths: HashSet<String>,
+    face_uvs: FaceUvs, // texture_sizes: BTreeMap<String, (u32, u32)>,
 }
 
 impl MapData {
@@ -66,6 +77,55 @@ impl MapData {
         let smooth_normals =
             shambler::face::normals_phong_averaged(&face_vertex_planes, &face_planes);
 
+        let texture_names = MapData::collect_textures(&geomap.textures);
+        let texture_paths = MapData::find_textures_in_vfs(&texture_names);
+
+        let texture_sizes: BTreeMap<&str, (u32, u32)> = texture_paths
+            .iter()
+            .map(|texture_name| {
+                let texture_size = size(texture_name.clone()).expect(&format!(
+                    "Image Processing failed! Is there an issue with the path? {}",
+                    texture_name
+                ));
+                (
+                    texture_name.as_str(),
+                    (texture_size.width as u32, texture_size.height as u32),
+                )
+            })
+            .collect();
+
+        let mut modified_textures: BTreeMap<TextureId, String> = BTreeMap::new();
+
+        for (texture_id, texture_name) in geomap.textures.iter() {
+            if texture_name == "__TB_empty" || texture_name == "skip" || texture_name == "clip" {
+                continue;
+            }
+
+            for texture_path in &texture_paths {
+                if texture_path.contains(texture_name) {
+                    modified_textures.insert(*texture_id, texture_path.to_string());
+                }
+            }
+            // println!("{texture_name:?}");
+        }
+
+        let mut textures_with_paths: Textures = Textures::default();
+        textures_with_paths.data = modified_textures;
+
+        let face_uvs = shambler::face::new(
+            &geomap.faces,
+            &geomap.textures,
+            &geomap.face_textures,
+            &face_vertices,
+            &face_planes,
+            &geomap.face_offsets,
+            &geomap.face_angles,
+            &geomap.face_scales,
+            &shambler::texture::texture_sizes(&textures_with_paths, texture_sizes),
+        );
+
+        // println!("{:?}", texture_paths);
+
         MapData {
             geomap,
             face_vertices,
@@ -73,7 +133,65 @@ impl MapData {
             inverted_face_tri_indices,
             flat_normals,
             smooth_normals,
+            texture_names,
+            texture_paths,
+            face_uvs, // texture_sizes: BTreeMap::new(),
         }
+    }
+
+    fn collect_textures(textures: &Textures) -> HashSet<String> {
+        textures
+            .iter()
+            .map(|(_, texture_name)| texture_name.to_string())
+            .collect()
+    }
+
+    fn find_vfs_texture(name: &str, config: &Ini) -> Option<String> {
+        let extensions = ["dds", "tga"];
+
+        if name == "__TB_empty" || name == "skip" || name == "clip" {
+            return None;
+        }
+
+        Some(
+            extensions
+                .iter()
+                .flat_map(|extension| {
+                    find_file(config, format!("Textures/{}.{}", name, extension).as_str())
+                })
+                .next()
+                .expect("Can't find texture! Somehow this map is using a texture which isn't in your openmw vfs.")
+                .to_string_lossy()
+                .to_string(),
+        )
+    }
+
+    fn find_textures_in_vfs(textures: &HashSet<String>) -> HashSet<String> {
+        let config = get_config().expect("Openmw.cfg not detected! Please ensure you have a valid openmw configuration file in the canonical system directory.");
+        let texture_paths: HashSet<String> = textures
+            .iter()
+            .filter_map(|texture_name| MapData::find_vfs_texture(&texture_name, &config))
+            .collect();
+
+        texture_paths
+    }
+
+    fn get_entity_properties(&self, entity_id: &EntityId) -> HashMap<&String, &String> {
+        let entity_properties = self.geomap.entity_properties.get(&entity_id);
+
+        // We *need* to handle groups here
+        // Group names are powers of 2 and have different keys in the group definition and separate entities which reference it
+        if let None = entity_properties {
+            panic!("brush entity {} has no properties!", entity_id);
+        }
+
+        entity_properties
+            .unwrap()
+            .iter()
+            .fold(HashMap::new(), |mut acc, prop| {
+                acc.insert(&prop.key, &prop.value);
+                acc
+            })
     }
 }
 
@@ -121,67 +239,14 @@ impl Mesh {
         // Perhaps we store the texture string and the vertex data in a hashmap,
         // keyed against the texture string
         for brush_id in brushes {
-            // Every brush gets one, EXCEPT for brushes with multiple textures
-            let mut node = BrushNiNode::default();
-            let faces = map_data.geomap.brush_faces.get(brush_id).unwrap();
-
-            for face_id in faces.iter() {
-                let texture_id = map_data.geomap.face_textures.get(face_id).unwrap();
-                let texture_name = map_data.geomap.textures.get(texture_id).unwrap();
-
-                if texture_name == "skip" {
-                    continue;
-                };
-
-                let mut s_flags: u32 = 0;
-
-                // Before moving onto texture generation,
-
-                let s_flags = match &map_data.geomap.face_extensions.get(face_id) {
-                    Some(Extension::Quake2 {
-                        content_flags: _,
-                        surface_flags,
-                        value: _,
-                    }) => *surface_flags,
-                    _ => 0,
-                };
-
-                // println!("EXTENSIONS: {s_flags}");
-
-                let vertices = &map_data.face_vertices.get(&face_id).unwrap();
-
-                // Later, we'll need to do something extra on the brush to define whether it can be inverted
-                let indices = match map_data.face_tri_indices.get(&face_id) {
-                    Some(indices) => indices,
-                    None => {
-                        continue;
-                    }
-                };
-
-                if texture_name != "clip" {
-                    node.normals
-                        .extend(&*map_data.flat_normals.get(&face_id).unwrap());
-                    node.vis_verts.extend(*vertices);
-                    node.vis_tris.push((*indices).to_vec());
-                }
-
-                // There is minor edge case in this approach where if all faces of an object do not have collision then an empty collision root is created
-                // This is exactly what we want, but, I worry it will have stupid consequences later
-                if s_flags & NiBroomSurface::NoClip as u32 == 0 {
-                    // println!("Face {face_id} on brush {brush_id} has collision!");
-                    node.col_verts.extend(*vertices);
-                    node.col_tris.push((*indices).to_vec());
-                }
-            }
-
-            node.collect();
+            let node = BrushNiNode::from_brush(brush_id, map_data);
 
             if node.col_verts.len() != node.vis_verts.len() && !mesh.use_collision_root {
-                // println!("Enabling root collision from on brush {brush_id}");
+                println!("Enabling root collision from on brush {brush_id}");
                 mesh.attach_collision();
             }
 
-            mesh.attach_node(node);
+            mesh.attach_node(node, &map_data.texture_paths);
         }
         mesh
     }
@@ -190,9 +255,13 @@ impl Mesh {
         let _ = self.stream.save_path(name);
     }
 
-    fn attach_node(&mut self, node: BrushNiNode) {
+    fn attach_node(&mut self, node: BrushNiNode, texture_paths: &HashSet<String>) {
         if node.vis_verts.len() > 0 {
             let vis_index = self.stream.insert(node.vis_shape);
+
+            // println!("{0}", node.texture);
+
+            self.assign_texture(vis_index, node.texture);
 
             let vis_data_index = self.stream.insert(node.vis_data);
 
@@ -223,6 +292,43 @@ impl Mesh {
             }
         }
     }
+
+    fn assign_texture(&mut self, object: nif::NiLink<nif::NiTriShape>, file_path: String) {
+        let config =
+            get_config().expect("Openmw.cfg not located! Be sure you have a valid openmw setup.");
+        // Create and insert a NiTexturingProperty and NiSourceTexture.
+        let tex_prop_link = self.stream.insert(nif::NiTexturingProperty::default());
+        let texture_link = self.stream.insert(nif::NiSourceTexture::default());
+
+        let mut extension = String::default();
+
+        for extension_candidate in ["dds", "tga"] {
+            let candidate_path = format!("Textures/{file_path}.{extension_candidate}");
+            if let Ok(rel_path) = find_file(&config, candidate_path.as_str()) {
+                extension = extension_candidate.to_string();
+                println!("Texture found! {extension_candidate}");
+                continue;
+            }
+        }
+
+        println!("{file_path}");
+
+        // Update the base map texture.
+        let tex_prop = self.stream.get_mut(tex_prop_link).unwrap();
+        tex_prop.texture_maps.resize(7, None); // not sure why
+        let mut base_map = nif::Map::default();
+        base_map.texture = texture_link.cast();
+        tex_prop.texture_maps[0] = Some(nif::TextureMap::Map(base_map));
+
+        // Update the texture source path.
+        let texture = self.stream.get_mut(texture_link).unwrap();
+        texture.source = nif::TextureSource::External(format!("{file_path}.{extension}").into());
+        println!("{0:?}", texture.source);
+
+        // Assign the tex prop to the target object
+        let object = self.stream.get_mut(object).unwrap();
+        object.properties.push(tex_prop_link.cast());
+    }
 }
 
 struct BrushNiNode {
@@ -230,14 +336,80 @@ struct BrushNiNode {
     vis_data: NiTriShapeData,
     vis_verts: Vec<SV3>,
     vis_tris: Vec<Vec<usize>>,
+    texture: String,
     normals: Vec<SV3>,
     col_shape: NiTriShape,
     col_data: NiTriShapeData,
     col_verts: Vec<SV3>,
     col_tris: Vec<Vec<usize>>,
+    uv_sets: Vec<SV2>,
 }
 
 impl BrushNiNode {
+    fn from_brush(brush_id: &BrushId, map_data: &MapData) -> Self {
+        let mut node = BrushNiNode::default();
+        let faces = map_data.geomap.brush_faces.get(brush_id).unwrap();
+
+        for face_id in faces.iter() {
+            let texture_id = map_data.geomap.face_textures.get(face_id).unwrap();
+            let texture_name = map_data.geomap.textures.get(texture_id).unwrap();
+
+            if texture_name == "skip" {
+                continue;
+            };
+            // Before moving onto texture generation,
+
+            let s_flags = match &map_data.geomap.face_extensions.get(face_id) {
+                Some(Extension::Quake2 {
+                    content_flags: _,
+                    surface_flags,
+                    value: _,
+                }) => *surface_flags,
+                _ => 0,
+            };
+
+            let vertices = &map_data.face_vertices.get(&face_id).unwrap();
+
+            // Later, we'll need to do something extra on the brush to define whether it can be inverted
+            let indices = match map_data.face_tri_indices.get(&face_id) {
+                Some(indices) => indices,
+                None => {
+                    continue;
+                }
+            };
+
+            let uv_sets = &map_data.face_uvs.get(&face_id).unwrap();
+
+            if texture_name != "clip" {
+                node.normals
+                    .extend(&*map_data.flat_normals.get(&face_id).unwrap());
+                node.uv_sets.extend(*uv_sets);
+                node.vis_verts.extend(*vertices);
+                node.vis_tris.push((*indices).to_vec());
+                node.texture = texture_name.to_string();
+            }
+
+            // There is minor edge case in this approach where if all faces of an object do not have collision then an empty collision root is created
+            // This is exactly what we want, but, I worry it will have stupid consequences later
+            if s_flags & NiBroomSurface::NoClip as u32 == 0 {
+                // println!("Face {face_id} on brush {brush_id} has collision!");
+                node.col_verts.extend(*vertices);
+                node.col_tris.push((*indices).to_vec());
+            }
+        }
+
+        node.collect();
+        node
+    }
+
+    /// Don't forget to deal with collision and attachment!!!!
+    fn from_brushes(brushes: &[BrushId], map_data: &MapData) -> Vec<BrushNiNode> {
+        brushes
+            .iter()
+            .map(|brush_id| BrushNiNode::from_brush(brush_id, map_data))
+            .collect()
+    }
+
     fn to_nif_format(shape_data: &mut NiTriShapeData, verts: &Vec<SV3>, tris: &Vec<Vec<usize>>) {
         if verts.len() == 0 {
             return;
@@ -276,6 +448,10 @@ impl BrushNiNode {
                 .normals
                 .push([normal[0] as f32, normal[1] as f32, normal[2] as f32].into());
         }
+
+        for uv in &self.uv_sets {
+            self.vis_data.uv_sets.push((uv[0], uv[1]).into());
+        }
     }
 }
 
@@ -286,11 +462,13 @@ impl Default for BrushNiNode {
             vis_data: NiTriShapeData::default(),
             vis_verts: Vec::new(),
             vis_tris: Vec::new(),
+            texture: String::new(),
             normals: Vec::new(),
             col_shape: NiTriShape::default(),
             col_data: NiTriShapeData::default(),
             col_verts: Vec::new(),
             col_tris: Vec::new(),
+            uv_sets: Vec::new(),
         }
     }
 }
@@ -307,60 +485,103 @@ fn main() {
     };
 
     let map_data = MapData::new(map_name);
+    let mut processed_base_objects: Vec<String> = Vec::new();
 
     for (entity_id, brushes) in map_data.geomap.entity_brushes.iter() {
-        let entity_properties = map_data.geomap.entity_properties.get(&entity_id);
-
-        // We *need* to handle groups here
-        // Group names are powers of 2 and have different keys in the group definition and separate entities which reference it
-        if let None = entity_properties {
-            panic!("brush entity {} has no properties!", entity_id);
-        }
-
         // So what happens, right?
         // Well, if we identify that this specific entity is a group, we need to gather all its children.
         // If that object is a group, skip it. If it's not a group,
         // Add the NiNodes to the mesh
 
-        let props = entity_properties.unwrap().iter();
+        let prop_map = map_data.get_entity_properties(entity_id);
 
-        for prop in props {
-            // match (prop.key, prop.value) {
-            //     (("_phong".to_string()), "1".to_string()) => {
-
-            //     }
-            // }
-            println!("{}, {}", prop.key, prop.value)
-        }
+        // for (key, value) in &prop_map {
+        //     println!("{}, {}", key, value)
+        // }
 
         let mut mesh = Mesh::from_map(brushes, &map_data);
+
+        match prop_map.get(&"RefId".to_string()) {
+            Some(ref_id) => {
+                if processed_base_objects.contains(ref_id) {
+                    continue;
+                } else {
+                    println!("Adding {ref_id} to unique set");
+                    processed_base_objects.push(ref_id.to_string());
+                }
+            }
+            None => {
+                println!("This object has no refid, and isn't part of a group. It may be the worldspawn?");
+            }
+        }
+
+        match prop_map.get(&"_tb_id".to_string()) {
+            Some(group_id) => {
+                println!(
+                    "This object is a group! Finding all non-group children for group {group_id}"
+                );
+                let mut ref_instances = 0;
+                let mut nodes = Vec::new();
+                let mut processed_group_objects: Vec<String> = Vec::new();
+
+                for (entity_id, brushes) in map_data.geomap.entity_brushes.iter() {
+                    let prop_map = map_data.get_entity_properties(entity_id);
+                    // let group_id;
+
+                    match prop_map.get(&"_tb_id".to_string()) {
+                        Some(_) => continue,
+                        None => {}
+                    }
+
+                    // We also should account for linked groups in the case below!
+                    match prop_map.get(&"_tb_group".to_string()) {
+                        Some(obj_group) => {
+                            if obj_group != group_id {
+                                println!("Found another group! Bailing on creating this mesh and saving it into the cellref.");
+                                continue;
+                            };
+                        }
+                        None => {
+                            println!("This object isn't part of a group, don't do anything with it here.");
+                            continue;
+                        }
+                    }
+
+                    match prop_map.get(&"RefId".to_string()) {
+                        Some(ref_id) => {
+                            ref_instances += 1;
+                            if processed_group_objects.contains(ref_id) {
+                                println!("We don't have full refId support yet, but this object {ref_id} has appeared in this group {ref_instances} times"); // In theory by this point, we should have a mesh for this object already.
+                                                                                                                                                             // Alternatively, we have to generate it here, which is probably going to be likely.
+                                continue; // If it does exist, though, we need to simply derive its placement
+                            } else {
+                                println!("Adding {ref_id} to unique group set. This should actually not be generated as part of the mesh, but rather create a new one for this unique object. Then it should be placed in the ESP file and referred to later.");
+                                processed_group_objects.push(ref_id.to_string());
+                            }
+                        }
+                        None => {
+                            println!("This object has no refid, and it's not a group, but it is a member of a group. This maybe shouldn't happen.");
+                        }
+                    }
+
+                    // println!("Object, not group!!");
+                    nodes.extend(BrushNiNode::from_brushes(brushes, &map_data));
+                }
+                println!("Total Child Nodes: {:?}", nodes.len());
+
+                for node in nodes {
+                    if node.col_verts.len() != node.vis_verts.len() && !mesh.use_collision_root {
+                        // println!("Enabling root collision from on brush {brush_id}");
+                        mesh.attach_collision();
+                    }
+
+                    mesh.attach_node(node, &map_data.texture_paths);
+                }
+            }
+            None => {}
+        }
 
         // Every entity is its own mesh
         mesh.save(format!("test_{entity_id}.nif"));
     }
-}
-
-fn assign_texture(
-    stream: &mut nif::NiStream,
-    object: nif::NiLink<nif::NiTriShape>,
-    file_path: &str,
-) {
-    // Create and insert a NiTexturingProperty and NiSourceTexture.
-    let tex_prop_link = stream.insert(nif::NiTexturingProperty::default());
-    let texture_link = stream.insert(nif::NiSourceTexture::default());
-
-    // Update the base map texture.
-    let tex_prop = stream.get_mut(tex_prop_link).unwrap();
-    tex_prop.texture_maps.resize(7, None); // not sure why
-    let mut base_map = nif::Map::default();
-    base_map.texture = texture_link.cast();
-    tex_prop.texture_maps[0] = Some(nif::TextureMap::Map(base_map));
-
-    // Update the texture source path.
-    let texture = stream.get_mut(texture_link).unwrap();
-    texture.source = nif::TextureSource::External(file_path.into());
-
-    // Assign the tex prop to the target object
-    let object = stream.get_mut(object).unwrap();
-    object.properties.push(tex_prop_link.cast());
 }
