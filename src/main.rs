@@ -87,6 +87,10 @@ impl MapData {
                     "Image Processing failed! Is there an issue with the path? {}",
                     texture_name
                 ));
+                println!(
+                    "Mapping texture {0} with sizes: {1}, {2}",
+                    texture_name, texture_size.width, texture_size.height
+                );
                 (
                     texture_name.as_str(),
                     (texture_size.width as u32, texture_size.height as u32),
@@ -156,7 +160,6 @@ impl MapData {
         Some(
             extensions
                 .iter()
-                .rev()
                 .flat_map(|extension| {
                     find_file(config, format!("Textures/{}.{}", name, extension).as_str())
                 })
@@ -549,19 +552,14 @@ fn main() {
                                 processed_group_objects.push(ref_id.to_string());
                             }
                         }
-                        None => {
-                            println!("This object has no refid, and it's not a group, but it is a member of a group. This maybe shouldn't happen.");
-                        }
+                        None => {} // object has no refid, and it's not a group, but it is a member of a group. This maybe shouldn't happen
                     }
 
-                    // println!("Object, not group!!");
                     nodes.extend(BrushNiNode::from_brushes(brushes, &map_data));
                 }
-                println!("Total Child Nodes: {:?}", nodes.len());
 
                 for node in nodes {
                     if node.col_verts.len() != node.vis_verts.len() && !mesh.use_collision_root {
-                        // println!("Enabling root collision from on brush {brush_id}");
                         mesh.attach_collision();
                     }
 
