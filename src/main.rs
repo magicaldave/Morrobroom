@@ -36,7 +36,7 @@ struct MapData {
     smooth_normals: FaceNormals,
     texture_names: HashSet<String>,
     texture_paths: HashSet<String>,
-    face_uvs: FaceUvs, // texture_sizes: BTreeMap<String, (u32, u32)>,
+    face_uvs: FaceUvs,
 }
 
 impl MapData {
@@ -102,11 +102,13 @@ impl MapData {
             }
 
             for texture_path in &texture_paths {
-                if texture_path.contains(texture_name) {
+                if texture_path
+                    .to_ascii_lowercase()
+                    .contains(&texture_name.to_ascii_lowercase())
+                {
                     modified_textures.insert(*texture_id, texture_path.to_string());
                 }
             }
-            // println!("{texture_name:?}");
         }
 
         let mut textures_with_paths: Textures = Textures::default();
@@ -124,8 +126,6 @@ impl MapData {
             &shambler::texture::texture_sizes(&textures_with_paths, texture_sizes),
         );
 
-        // println!("{:?}", texture_paths);
-
         MapData {
             geomap,
             face_vertices,
@@ -135,7 +135,7 @@ impl MapData {
             smooth_normals,
             texture_names,
             texture_paths,
-            face_uvs, // texture_sizes: BTreeMap::new(),
+            face_uvs,
         }
     }
 
@@ -259,8 +259,6 @@ impl Mesh {
         if node.vis_verts.len() > 0 {
             let vis_index = self.stream.insert(node.vis_shape);
 
-            // println!("{0}", node.texture);
-
             self.assign_texture(vis_index, node.texture);
 
             let vis_data_index = self.stream.insert(node.vis_data);
@@ -306,12 +304,9 @@ impl Mesh {
             let candidate_path = format!("Textures/{file_path}.{extension_candidate}");
             if let Ok(rel_path) = find_file(&config, candidate_path.as_str()) {
                 extension = extension_candidate.to_string();
-                println!("Texture found! {extension_candidate}");
                 continue;
             }
         }
-
-        println!("{file_path}");
 
         // Update the base map texture.
         let tex_prop = self.stream.get_mut(tex_prop_link).unwrap();
@@ -323,7 +318,6 @@ impl Mesh {
         // Update the texture source path.
         let texture = self.stream.get_mut(texture_link).unwrap();
         texture.source = nif::TextureSource::External(format!("{file_path}.{extension}").into());
-        println!("{0:?}", texture.source);
 
         // Assign the tex prop to the target object
         let object = self.stream.get_mut(object).unwrap();
@@ -392,7 +386,6 @@ impl BrushNiNode {
             // There is minor edge case in this approach where if all faces of an object do not have collision then an empty collision root is created
             // This is exactly what we want, but, I worry it will have stupid consequences later
             if s_flags & NiBroomSurface::NoClip as u32 == 0 {
-                // println!("Face {face_id} on brush {brush_id} has collision!");
                 node.col_verts.extend(*vertices);
                 node.col_tris.push((*indices).to_vec());
             }
@@ -494,10 +487,6 @@ fn main() {
         // Add the NiNodes to the mesh
 
         let prop_map = map_data.get_entity_properties(entity_id);
-
-        // for (key, value) in &prop_map {
-        //     println!("{}, {}", key, value)
-        // }
 
         let mut mesh = Mesh::from_map(brushes, &map_data);
 
