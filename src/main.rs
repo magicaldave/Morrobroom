@@ -5,21 +5,16 @@ use shambler::{
     brush::BrushId,
     entity::EntityId,
     face::{FaceId, FaceNormals, FaceTriangleIndices, FaceUvs, FaceVertices},
-    texture::{TextureId, TextureSizes},
-    GeoMap, Textures, TexturesTag, Vector2 as SV2, Vector3 as SV3,
+    texture::TextureId,
+    GeoMap, Textures, Vector2 as SV2, Vector3 as SV3,
 };
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
     env, fs,
-    io::Write,
-    path::PathBuf,
 };
 use tes3::{
     esp::*,
-    nif::{
-        self, NiLink, NiNode, NiStream, NiTriShape, NiTriShapeData, RootCollisionNode,
-        TextureSource,
-    },
+    nif::{self, NiLink, NiNode, NiStream, NiTriShape, NiTriShapeData, RootCollisionNode},
 };
 
 enum NiBroomSurface {
@@ -35,8 +30,6 @@ struct MapData {
     inverted_face_tri_indices: FaceTriangleIndices,
     flat_normals: FaceNormals,
     smooth_normals: FaceNormals,
-    texture_names: HashSet<String>,
-    texture_paths: HashSet<String>,
     face_uvs: FaceUvs,
 }
 
@@ -138,8 +131,6 @@ impl MapData {
             inverted_face_tri_indices,
             flat_normals,
             smooth_normals,
-            texture_names,
-            texture_paths,
             face_uvs,
         }
     }
@@ -183,7 +174,6 @@ impl MapData {
     fn get_entity_properties(&self, entity_id: &EntityId) -> HashMap<&String, &String> {
         let entity_properties = self.geomap.entity_properties.get(&entity_id);
 
-        // We *need* to handle groups here
         // Group names are powers of 2 and have different keys in the group definition and separate entities which reference it
         if let None = entity_properties {
             panic!("brush entity {} has no properties!", entity_id);
@@ -212,15 +202,12 @@ impl Mesh {
 
         let root_node = NiNode::default();
         let root_index = stream.insert(root_node);
-        // let collision_root = RootCollisionNode::default();
-        // let collision_index = 0;
 
         stream.roots = vec![root_index.cast()];
 
         Mesh {
             stream,
             root_index,
-            // collision_root,
             collision_index: NiLink::<RootCollisionNode>::default(),
             use_collision_root: false,
         }
@@ -239,20 +226,11 @@ impl Mesh {
         let mut mesh = Mesh::new();
         mesh.attach_collision();
 
-        // Every brush should be a unique TriShape
-        // However, faces which use multiple textures must be split further
-        // Perhaps we store the texture string and the vertex data in a hashmap,
-        // keyed against the texture string
         for brush_id in brushes {
             let brush_nodes = BrushNiNode::from_brush(brush_id, map_data);
 
             for node in brush_nodes {
-                // if node.col_verts.len() != node.vis_verts.len() && !mesh.use_collision_root {
-                //     println!("Enabling root collision from on brush {brush_id}");
-                //     mesh.attach_collision();
-                // }
-
-                mesh.attach_node(node, &map_data.texture_paths);
+                mesh.attach_node(node);
             }
         }
         mesh
@@ -262,7 +240,7 @@ impl Mesh {
         let _ = self.stream.save_path(name);
     }
 
-    fn attach_node(&mut self, node: BrushNiNode, texture_paths: &HashSet<String>) {
+    fn attach_node(&mut self, node: BrushNiNode) {
         // HACK: This only gets used if the vis data and collision data are equal, so is always initialized when used
         let mut vis_outer = NiLink::default();
 
@@ -293,8 +271,6 @@ impl Mesh {
                 false => self.stream.insert(node.col_data),
             };
 
-            // ;
-
             if let Some(collision) = self.stream.get_mut(col_index) {
                 collision.geometry_data = col_data_index.cast();
             };
@@ -316,7 +292,7 @@ impl Mesh {
 
         for extension_candidate in ["dds", "tga"] {
             let candidate_path = format!("Textures/{file_path}.{extension_candidate}");
-            if let Ok(rel_path) = find_file(&config, candidate_path.as_str()) {
+            if let Ok(_) = find_file(&config, candidate_path.as_str()) {
                 extension = extension_candidate.to_string();
                 break;
             }
@@ -411,7 +387,7 @@ impl BrushNiNode {
             {
                 let inverted_indices = map_data.inverted_face_tri_indices.get(&face_id).unwrap();
                 indices.extend_from_slice(inverted_indices);
-                s_flags |= (NiBroomSurface::NoClip as u32);
+                s_flags |= NiBroomSurface::NoClip as u32;
                 println!("{face_id} interpreted as liquid")
             }
 
@@ -463,16 +439,9 @@ impl BrushNiNode {
             }
         }
 
-        // println!("{face_textures:?}");
-
-        // for texture_set in &faces_with_matching_textures {
-        //     println!("Texture set: {texture_set:?}")
-        // }
-
         faces_with_matching_textures
     }
 
-    /// Don't forget to deal with collision and attachment!!!!
     fn from_brushes(brushes: &[BrushId], map_data: &MapData) -> Vec<BrushNiNode> {
         brushes
             .iter()
@@ -637,7 +606,7 @@ fn main() {
                 }
 
                 for node in nodes {
-                    mesh.attach_node(node, &map_data.texture_paths);
+                    mesh.attach_node(node);
                 }
             }
             None => {}
