@@ -153,7 +153,7 @@ impl MapData {
     fn find_vfs_texture(name: &str, config: &Ini) -> Option<String> {
         let extensions = ["dds", "tga"];
 
-        if name == "__TB_empty" || name == "skip" || name == "clip" {
+        if name == "__TB_empty" || name == "trigger" || name == "skip" || name == "clip" {
             return None;
         }
 
