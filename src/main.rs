@@ -161,10 +161,11 @@ impl MapData {
             extensions
                 .iter()
                 .flat_map(|extension| {
+                    println!("Searching for texture: {name}");
                     find_file(config, format!("Textures/{}.{}", name, extension).as_str())
                 })
                 .next()
-                .expect("Can't find texture! Somehow this map is using a texture which isn't in your openmw vfs.")
+                .expect("Texture not found! This map is using a texture which isn't in your openmw vfs!")
                 .to_string_lossy()
                 .to_string(),
         )
