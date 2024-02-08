@@ -14,8 +14,30 @@ use std::{
 };
 use tes3::{
     esp::*,
-    nif::{self, NiLink, NiNode, NiStream, NiTriShape, NiTriShapeData, RootCollisionNode},
+    nif::{
+        self, NiLink, NiMaterialProperty, NiNode, NiStream, NiTriShape, NiTriShapeData,
+        RootCollisionNode,
+    },
 };
+
+const MAP_SCALE: f32 = 2.;
+
+struct Mat_Color {}
+
+impl Mat_Color {
+    const fn sky() -> (f32, f32, f32) {
+        (1., 0., 1.)
+    }
+    const fn water() -> (f32, f32, f32) {
+        (0., 0., 1.)
+    }
+    const fn lava() -> (f32, f32, f32) {
+        (1., 0., 0.)
+    }
+    const fn slime() -> (f32, f32, f32) {
+        (0., 1., 0.)
+    }
+}
 
 enum NiBroomSurface {
     NoClip = 1,
@@ -192,6 +214,7 @@ impl MapData {
 struct Mesh {
     stream: NiStream,
     root_index: NiLink<NiNode>,
+    base_index: NiLink<NiNode>,
     collision_index: NiLink<RootCollisionNode>,
     use_collision_root: bool,
 }
@@ -200,7 +223,11 @@ impl Mesh {
     fn new() -> Self {
         let mut stream = NiStream::default();
 
-        let root_node = NiNode::default();
+        let mut root_node = NiNode::default();
+        let mut base_node = NiNode::default();
+        base_node.scale = MAP_SCALE;
+        let base_index = stream.insert(base_node);
+        root_node.children.push(base_index.cast());
         let root_index = stream.insert(root_node);
 
         stream.roots = vec![root_index.cast()];
@@ -208,6 +235,7 @@ impl Mesh {
         Mesh {
             stream,
             root_index,
+            base_index,
             collision_index: NiLink::<RootCollisionNode>::default(),
             use_collision_root: false,
         }
@@ -217,7 +245,7 @@ impl Mesh {
         self.use_collision_root = true;
         self.collision_index = self.stream.insert(RootCollisionNode::default());
 
-        if let Some(root) = self.stream.get_mut(self.root_index) {
+        if let Some(root) = self.stream.get_mut(self.base_index) {
             root.children.push(self.collision_index.cast());
         };
     }
@@ -257,7 +285,7 @@ impl Mesh {
                 shape.geometry_data = vis_data_index.cast();
             };
 
-            if let Some(root) = self.stream.get_mut(self.root_index) {
+            if let Some(root) = self.stream.get_mut(self.base_index) {
                 root.children.push(vis_index.cast());
             };
         }
@@ -525,12 +553,16 @@ fn main() {
 
     let ext_index = map_name
         .rfind('.')
-        .expect("Map should always have an extension, something is very wrong");
+        .expect("Map should always have an extension, this is probably a directory");
     let workdir = &map_name[..ext_index];
 
-    if !fs::metadata(workdir).is_ok() {
-        fs::create_dir(workdir).expect("Folder creation failed! This is very bad!");
-        println!("Folder '{}' created.", workdir);
+    if !fs::metadata("Meshes").is_ok() {
+        fs::create_dir("Meshes").expect("Folder creation failed! This is very bad!")
+    }
+
+    if !fs::metadata(format!("Meshes/{workdir}")).is_ok() {
+        fs::create_dir(format!("Meshes/{workdir}"))
+            .expect("Folder creation failed! This is very bad!")
     }
 
     let map_data = MapData::new(map_name);
@@ -613,6 +645,6 @@ fn main() {
         }
 
         // Every entity is its own mesh
-        mesh.save(format!("{workdir}/test_{entity_id}.nif"));
+        mesh.save(format!("Meshes/{workdir}/test_{entity_id}.nif"));
     }
 }
