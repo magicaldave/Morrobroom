@@ -13,7 +13,7 @@ use std::{
     env, fs,
 };
 use tes3::{
-    esp::*,
+    esp,
     nif::{
         self, NiLink, NiMaterialProperty, NiNode, NiStream, NiTriShape, NiTriShapeData,
         RootCollisionNode,
@@ -216,7 +216,10 @@ struct Mesh {
     root_index: NiLink<NiNode>,
     base_index: NiLink<NiNode>,
     collision_index: NiLink<RootCollisionNode>,
+    game_object: esp::TES3Object,
     use_collision_root: bool,
+    node_distances: Vec<SV3>,
+    final_distance: SV3,
 }
 
 impl Mesh {
@@ -238,6 +241,9 @@ impl Mesh {
             base_index,
             collision_index: NiLink::<RootCollisionNode>::default(),
             use_collision_root: false,
+            game_object: esp::TES3Object::Static(esp::Static::default()),
+            node_distances: Vec::new(),
+            final_distance: SV3::default(),
         }
     }
 
@@ -264,7 +270,7 @@ impl Mesh {
         mesh
     }
 
-    fn save(&mut self, name: String) {
+    fn save(&mut self, name: &String) {
         let _ = self.stream.save_path(name);
     }
 
@@ -273,6 +279,8 @@ impl Mesh {
         let mut vis_outer = NiLink::default();
 
         if node.vis_verts.len() > 0 {
+            self.node_distances.push(node.distance_from_origin);
+
             let vis_index = self.stream.insert(node.vis_shape);
 
             if !node.is_sky {
@@ -375,6 +383,7 @@ struct BrushNiNode {
     col_data: NiTriShapeData,
     col_verts: Vec<SV3>,
     col_tris: Vec<Vec<usize>>,
+    distance_from_origin: SV3,
 }
 
 impl BrushNiNode {
@@ -536,6 +545,8 @@ impl BrushNiNode {
     }
 
     fn collect(&mut self) {
+        self.distance_from_origin = find_closest_vertex(&self.vis_verts);
+
         Self::to_nif_format(&mut self.vis_data, &self.vis_verts, &self.vis_tris);
         Self::to_nif_format(&mut self.col_data, &self.col_verts, &self.col_tris);
 
@@ -566,6 +577,7 @@ impl Default for BrushNiNode {
             col_data: NiTriShapeData::default(),
             col_verts: Vec::new(),
             col_tris: Vec::new(),
+            distance_from_origin: SV3::default(),
         }
     }
 }
@@ -596,25 +608,46 @@ fn main() {
     }
 
     let map_data = MapData::new(map_name);
-    let mut processed_base_objects: Vec<String> = Vec::new();
+    let mut processed_base_objects: HashMap<String, String> = HashMap::new();
 
     for (entity_id, brushes) in map_data.geomap.entity_brushes.iter() {
         let prop_map = map_data.get_entity_properties(entity_id);
 
         let mut mesh = Mesh::from_map(brushes, &map_data);
 
-        match prop_map.get(&"RefId".to_string()) {
+        let ref_id = match prop_map.get(&"RefId".to_string()) {
             Some(ref_id) => {
-                if processed_base_objects.contains(ref_id) {
-                    continue;
+                if processed_base_objects.contains_key(&ref_id.to_string()) {
+                    // Not sure what to do here.
+                    // In this case, the object has already had a mesh generated.
+                    // But, we need to collect its vertices to know what position to provide it.
+                    // Maybe we should just have a specific function or behavior that only gets the vertices here.
+                    // Starting to get ugly.
+                    // continue;
+                    println!("Already processed {ref_id} mesh, it should only have a cellRef and not a new mesh.");
                 } else {
                     println!("Adding {ref_id} to unique set");
-                    processed_base_objects.push(ref_id.to_string());
+                    // processed_base_objects.push(ref_id.to_string());
                 }
+                ref_id.to_string()
             }
             None => {
+                format!("scene_{entity_id}")
                 // println!("This object has no refid, and isn't part of a group. It may be the worldspawn?");
             }
+        };
+
+        match prop_map.get(&"classname".to_string()) {
+            Some(classname) => match classname.as_str() {
+                "BOOK" => {
+                    mesh.game_object = esp::TES3Object::Book(tes3::esp::Book {
+                        id: ref_id.clone(),
+                        ..Default::default()
+                    })
+                }
+                _ => {}
+            },
+            None => {} // object has no refid, and it's not a group, but it is a member of a group. This maybe shouldn't happen
         }
 
         match prop_map.get(&"_tb_id".to_string()) {
@@ -674,7 +707,45 @@ fn main() {
             None => {}
         }
 
+        let mesh_distance = find_closest_vertex(&mesh.node_distances);
+
+        mesh.stream
+            .objects_of_type_mut::<NiTriShapeData>()
+            .flat_map(|shape| shape.vertices.iter_mut())
+            .for_each(|vertex| {
+                vertex.x -= mesh_distance.x;
+                vertex.y -= mesh_distance.y;
+                vertex.z -= mesh_distance.z;
+            });
+
+        let mesh_name = format!("Meshes/{workdir}/test_{entity_id}.nif");
+
         // Every entity is its own mesh
-        mesh.save(format!("Meshes/{workdir}/test_{entity_id}.nif"));
+        mesh.save(&mesh_name);
+
+        processed_base_objects.insert(ref_id, mesh_name);
     }
+}
+
+fn find_closest_vertex(verts: &Vec<SV3>) -> SV3 {
+    // Initialize the furthest vertex with the first vertex in vis_data
+    let mut closest_vertex = verts[0];
+    // Initialize the maximum distance squared with the squared distance of the first vertex
+    let mut max_distance_squared =
+        verts[0].x * verts[0].x + verts[0].y * verts[0].y + verts[0].z * verts[0].z;
+
+    // Iterate over the remaining vertices in vis_data starting from the second vertex
+    for vertex in verts.iter().skip(1) {
+        // Calculate the squared distance from the origin for the current vertex
+        let distance_squared = vertex.x * vertex.x + vertex.y * vertex.y + vertex.z * vertex.z;
+
+        // If the calculated distance is greater than the current maximum, update the furthest vertex
+        if distance_squared < max_distance_squared {
+            closest_vertex = *vertex;
+            max_distance_squared = distance_squared;
+        }
+    }
+
+    // Return the furthest vertex
+    closest_vertex
 }
