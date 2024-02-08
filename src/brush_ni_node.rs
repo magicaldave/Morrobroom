@@ -1,33 +1,41 @@
+use std::collections::HashSet;
+
 use shalrath;
 use shambler::{brush::BrushId, face::FaceId, Vector2 as SV2, Vector3 as SV3};
-use std::collections::HashSet;
 use tes3::nif::{NiTriShape, NiTriShapeData};
 
-use crate::find_closest_vertex;
-pub use crate::map_data::MapData;
-use crate::surfaces;
+use crate::{find_closest_vertex, map_data::MapData, surfaces};
 
 pub struct BrushNiNode {
     pub vis_shape: NiTriShape,
     pub vis_data: NiTriShapeData,
     pub vis_verts: Vec<SV3>,
-    pub vis_tris: Vec<Vec<usize>>,
     pub is_sky: bool,
-    pub normals: Vec<SV3>,
     pub texture: String,
-    pub uv_sets: Vec<SV2>,
     pub col_shape: NiTriShape,
     pub col_data: NiTriShapeData,
     pub col_verts: Vec<SV3>,
-    pub col_tris: Vec<Vec<usize>>,
     pub distance_from_origin: SV3,
+    // Textures and triangles are only used internally
+    normals: Vec<SV3>,
+    uv_sets: Vec<SV2>,
+    vis_tris: Vec<Vec<usize>>,
+    col_tris: Vec<Vec<usize>>,
 }
 
 impl BrushNiNode {
-    pub fn from_brush(brush_id: &BrushId, map_data: &MapData) -> Vec<BrushNiNode> {
-        // let mut node = BrushNiNode::default();
-        // let faces = map_data.geomap.brush_faces.get(brush_id).unwrap();
+    pub fn from_brushes(brushes: &[BrushId], map_data: &MapData) -> Vec<BrushNiNode> {
+        brushes
+            .iter()
+            .flat_map(|brush_id| BrushNiNode::from_brush(brush_id, map_data))
+            .collect()
+    }
 
+    /// The name of this function might be a bit confusing, as it returns a set of nodes
+    /// But one brush may have multiple textures, whereas one TriShape should only
+    /// ever have one texture. So even though we are requesting information for one brush,
+    /// Any one brush might be an arbitrary number of TriShapes due to texture splitting.
+    pub fn from_brush(brush_id: &BrushId, map_data: &MapData) -> Vec<BrushNiNode> {
         let mut face_nodes = Vec::new();
 
         let faces_with_textures = Self::collect_faces_with_textures(brush_id, map_data);
@@ -43,7 +51,7 @@ impl BrushNiNode {
         face_nodes
     }
 
-    pub fn node_from_faces(faces: &Vec<FaceId>, map_data: &MapData) -> BrushNiNode {
+    fn node_from_faces(faces: &Vec<FaceId>, map_data: &MapData) -> BrushNiNode {
         let mut node = BrushNiNode::default();
 
         for face_id in faces.iter() {
@@ -115,7 +123,7 @@ impl BrushNiNode {
         node
     }
 
-    pub fn collect_faces_with_textures(brush_id: &BrushId, map_data: &MapData) -> Vec<Vec<FaceId>> {
+    fn collect_faces_with_textures(brush_id: &BrushId, map_data: &MapData) -> Vec<Vec<FaceId>> {
         let mut face_textures = Vec::new();
 
         let faces = map_data.geomap.brush_faces.get(brush_id).unwrap();
@@ -145,18 +153,7 @@ impl BrushNiNode {
         faces_with_matching_textures
     }
 
-    pub fn from_brushes(brushes: &[BrushId], map_data: &MapData) -> Vec<BrushNiNode> {
-        brushes
-            .iter()
-            .flat_map(|brush_id| BrushNiNode::from_brush(brush_id, map_data))
-            .collect()
-    }
-
-    pub fn to_nif_format(
-        shape_data: &mut NiTriShapeData,
-        verts: &Vec<SV3>,
-        tris: &Vec<Vec<usize>>,
-    ) {
+    fn to_nif_format(shape_data: &mut NiTriShapeData, verts: &Vec<SV3>, tris: &Vec<Vec<usize>>) {
         if verts.len() == 0 {
             return;
         };
@@ -185,7 +182,7 @@ impl BrushNiNode {
         }
     }
 
-    pub fn collect(&mut self) {
+    fn collect(&mut self) {
         self.distance_from_origin = find_closest_vertex(&self.vis_verts);
 
         Self::to_nif_format(&mut self.vis_data, &self.vis_verts, &self.vis_tris);

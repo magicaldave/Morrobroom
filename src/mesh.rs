@@ -8,23 +8,23 @@ use tes3::{
 use crate::{surfaces, BrushNiNode, MapData};
 
 pub struct Mesh {
-    pub stream: NiStream,
-    pub root_index: NiLink<NiNode>,
-    pub base_index: NiLink<NiNode>,
-    pub collision_index: NiLink<RootCollisionNode>,
     pub game_object: esp::TES3Object,
-    pub use_collision_root: bool,
     pub node_distances: Vec<SV3>,
-    pub final_distance: SV3,
+    pub stream: NiStream,
+    base_index: NiLink<NiNode>,
+    collision_index: NiLink<RootCollisionNode>,
+    final_distance: SV3,
+    root_index: NiLink<NiNode>,
 }
 
 impl Mesh {
-    pub fn new() -> Self {
+    fn new() -> Self {
         let mut stream = NiStream::default();
-
         let mut root_node = NiNode::default();
         let mut base_node = NiNode::default();
-        base_node.scale = surfaces::MAP_SCALE;
+        base_node.scale = surfaces::MAP_SCALE; // Trenchbroom maps tend to be a bit small.
+        let collision_index = stream.insert(RootCollisionNode::default());
+        base_node.children.push(collision_index.cast());
         let base_index = stream.insert(base_node);
         root_node.children.push(base_index.cast());
         let root_index = stream.insert(root_node);
@@ -36,25 +36,14 @@ impl Mesh {
             root_index,
             base_index,
             collision_index: NiLink::<RootCollisionNode>::default(),
-            use_collision_root: false,
             game_object: esp::TES3Object::Static(esp::Static::default()),
             node_distances: Vec::new(),
             final_distance: SV3::default(),
         }
     }
 
-    pub fn attach_collision(&mut self) {
-        self.use_collision_root = true;
-        self.collision_index = self.stream.insert(RootCollisionNode::default());
-
-        if let Some(root) = self.stream.get_mut(self.base_index) {
-            root.children.push(self.collision_index.cast());
-        };
-    }
-
     pub fn from_map(brushes: &Vec<BrushId>, map_data: &MapData) -> Mesh {
         let mut mesh = Mesh::new();
-        mesh.attach_collision();
 
         for brush_id in brushes {
             let brush_nodes = BrushNiNode::from_brush(brush_id, map_data);

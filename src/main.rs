@@ -22,19 +22,7 @@ fn main() {
         ),
     };
 
-    let ext_index = map_name
-        .rfind('.')
-        .expect("Map should always have an extension, this is probably a directory");
-    let workdir = &map_name[..ext_index];
-
-    if !fs::metadata("Meshes").is_ok() {
-        fs::create_dir("Meshes").expect("Folder creation failed! This is very bad!")
-    }
-
-    if !fs::metadata(format!("Meshes/{workdir}")).is_ok() {
-        fs::create_dir(format!("Meshes/{workdir}"))
-            .expect("Folder creation failed! This is very bad!")
-    }
+    let workdir = create_workdir(&map_name);
 
     let map_data = MapData::new(map_name);
     let mut processed_base_objects: HashMap<String, String> = HashMap::new();
@@ -156,25 +144,44 @@ fn main() {
     }
 }
 
+fn create_workdir(map_name: &String) -> String {
+    let ext_index = map_name
+        .rfind('.')
+        .expect("Map should always have an extension, this is probably a directory");
+
+    let workdir = &map_name[..ext_index];
+
+    if !fs::metadata("Meshes").is_ok() {
+        fs::create_dir("Meshes").expect("Folder creation failed! This is very bad!")
+    }
+
+    if !fs::metadata(format!("Meshes/{workdir}")).is_ok() {
+        fs::create_dir(format!("Meshes/{workdir}"))
+            .expect("Folder creation failed! This is very bad!")
+    }
+
+    workdir.to_string()
+}
+
 fn find_closest_vertex(verts: &Vec<SV3>) -> SV3 {
-    // Initialize the furthest vertex with the first vertex in vis_data
+    // Initialize the closest vertex with the first vertex in vis_data
     let mut closest_vertex = verts[0];
     // Initialize the maximum distance squared with the squared distance of the first vertex
     let mut max_distance_squared =
         verts[0].x * verts[0].x + verts[0].y * verts[0].y + verts[0].z * verts[0].z;
 
-    // Iterate over the remaining vertices in vis_data starting from the second vertex
+    // Iterate over the remaining provided vertices starting from the second vertex
     for vertex in verts.iter().skip(1) {
         // Calculate the squared distance from the origin for the current vertex
         let distance_squared = vertex.x * vertex.x + vertex.y * vertex.y + vertex.z * vertex.z;
 
-        // If the calculated distance is greater than the current maximum, update the furthest vertex
+        // If the calculated distance is lower than the current maximum, update the closest vertex
         if distance_squared < max_distance_squared {
             closest_vertex = *vertex;
             max_distance_squared = distance_squared;
         }
     }
 
-    // Return the furthest vertex
+    // Return the closest vertex
     closest_vertex
 }
