@@ -275,7 +275,11 @@ impl Mesh {
         if node.vis_verts.len() > 0 {
             let vis_index = self.stream.insert(node.vis_shape);
 
-            self.assign_texture(vis_index, node.texture);
+            if !node.is_sky {
+                self.assign_texture(vis_index, node.texture);
+            } else {
+                self.assign_material(vis_index);
+            }
 
             let vis_data_index = self.stream.insert(node.vis_data);
 
@@ -341,6 +345,21 @@ impl Mesh {
         let object = self.stream.get_mut(object).unwrap();
         object.properties.push(tex_prop_link.cast());
     }
+
+    fn assign_material(&mut self, object: nif::NiLink<nif::NiTriShape>) {
+        let mut mat = NiMaterialProperty {
+            emissive_color: Mat_Color::sky().into(),
+            ..Default::default()
+        };
+
+        mat.flags = 1;
+
+        let mat_link = self.stream.insert(mat);
+
+        // Assign the tex prop to the target object
+        let object = self.stream.get_mut(object).unwrap();
+        object.properties.push(mat_link.cast());
+    }
 }
 
 struct BrushNiNode {
@@ -348,6 +367,7 @@ struct BrushNiNode {
     vis_data: NiTriShapeData,
     vis_verts: Vec<SV3>,
     vis_tris: Vec<Vec<usize>>,
+    is_sky: bool,
     normals: Vec<SV3>,
     texture: String,
     uv_sets: Vec<SV2>,
@@ -407,6 +427,12 @@ impl BrushNiNode {
                 }
             };
 
+            // We can't do fuzzier matches on this, so,
+            // we'll have to hardcode a set of sky texture names (Thanks skyrim)
+            if texture_name.to_ascii_lowercase() == "sky5_blu" {
+                node.is_sky = true;
+            }
+
             // Test for water or slime types
             if texture_name.to_ascii_lowercase().contains("slime")
                 || texture_name.to_ascii_lowercase().contains("water")
@@ -422,9 +448,12 @@ impl BrushNiNode {
             let uv_sets = &map_data.face_uvs.get(&face_id).unwrap();
 
             if texture_name != "clip" {
-                node.normals
-                    .extend(&*map_data.flat_normals.get(&face_id).unwrap());
-                node.uv_sets.extend(*uv_sets);
+                if !node.is_sky {
+                    node.normals
+                        .extend(&*map_data.flat_normals.get(&face_id).unwrap());
+                    node.uv_sets.extend(*uv_sets);
+                }
+
                 node.vis_verts.extend(*vertices);
                 node.vis_tris.push((*indices).to_vec());
                 node.texture = texture_name.to_string();
@@ -529,6 +558,7 @@ impl Default for BrushNiNode {
             vis_data: NiTriShapeData::default(),
             vis_verts: Vec::new(),
             vis_tris: Vec::new(),
+            is_sky: false,
             normals: Vec::new(),
             texture: String::new(),
             uv_sets: Vec::new(),
