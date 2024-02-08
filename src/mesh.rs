@@ -35,7 +35,7 @@ impl Mesh {
             stream,
             root_index,
             base_index,
-            collision_index: NiLink::<RootCollisionNode>::default(),
+            collision_index,
             game_object: esp::TES3Object::Static(esp::Static::default()),
             node_distances: Vec::new(),
             final_distance: SV3::default(),
