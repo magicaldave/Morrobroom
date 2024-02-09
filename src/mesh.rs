@@ -22,9 +22,9 @@ impl Mesh {
         let mut stream = NiStream::default();
         let mut root_node = NiNode::default();
         let mut base_node = NiNode::default();
-        base_node.scale = surfaces::MAP_SCALE; // Trenchbroom maps tend to be a bit small.
         let collision_index = stream.insert(RootCollisionNode::default());
         base_node.children.push(collision_index.cast());
+        base_node.scale = surfaces::MAP_SCALE; // Trenchbroom maps tend to be a bit small.
         let base_index = stream.insert(base_node);
         root_node.children.push(base_index.cast());
         let root_index = stream.insert(root_node);
