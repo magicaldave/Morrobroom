@@ -1,8 +1,11 @@
 name: release
+
 on:
+  workflow_dispatch:
   push:
-    tags:
-      - "v[0-9]+.[0-9]+.[0-9]+"
+  pull_request:
+    branches: [ v2.1 ]
+
 jobs:
   setup:
     runs-on: ubuntu-latest
@@ -28,11 +31,11 @@ jobs:
             archive: windows-latest.zip
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@nightly
 
       - name: build
-        run: cargo +nightly build --release
+        run: cargo build --release
 
       - name: compress
         run: tar -acf ${{ matrix.archive }} -C ./target/release/ ${{ matrix.binary }}
