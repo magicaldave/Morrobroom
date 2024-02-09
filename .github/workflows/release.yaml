@@ -1,0 +1,43 @@
+name: release
+permissions:
+  contents: write
+
+on:
+  workflow_dispatch:
+  push:
+  pull_request:
+    branches: [ v2.1 ]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
+        include:
+          - os: macos-latest
+            binary: morrobroom
+            archive: macos-latest.zip
+          - os: ubuntu-latest
+            binary: morrobroom
+            archive: ubuntu-latest.zip
+          - os: windows-latest
+            binary: morrobroom.exe
+            archive: windows-latest.zip
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@nightly
+
+      - name: build
+        run: cargo build --release
+
+      - name: compress
+        run: tar -acf ${{ matrix.archive }} -C ./target/release/ ${{ matrix.binary }}
+
+      - name: upload
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: Latest
+          files: ${{ matrix.archive }}
+          body: |
+            Latest CI build of Morrobroom
