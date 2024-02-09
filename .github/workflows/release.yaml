@@ -7,15 +7,7 @@ on:
     branches: [ v2.1 ]
 
 jobs:
-  setup:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/create-release@v1
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: ${{ github.ref }}
   build:
-    needs: setup
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest, windows-latest]
@@ -43,4 +35,7 @@ jobs:
       - name: upload
         uses: softprops/action-gh-release@v1
         with:
+          tag_name: Latest
           files: ${{ matrix.archive }}
+          body: |
+            Latest CI build of Morrobroom
