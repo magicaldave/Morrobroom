@@ -69,7 +69,7 @@ impl Mesh {
             let vis_index = self.stream.insert(node.vis_shape);
 
             if !node.is_sky {
-                self.assign_texture(vis_index, node.texture);
+                self.assign_base_texture(vis_index, node.texture);
             } else {
                 self.assign_material(vis_index);
             }
@@ -106,7 +106,7 @@ impl Mesh {
         }
     }
 
-    pub fn assign_texture(&mut self, object: nif::NiLink<nif::NiTriShape>, file_path: String) {
+    fn assign_base_texture(&mut self, object: nif::NiLink<nif::NiTriShape>, file_path: String) {
         let config =
             get_config().expect("Openmw.cfg not located! Be sure you have a valid openmw setup.");
         // Create and insert a NiTexturingProperty and NiSourceTexture.
