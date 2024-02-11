@@ -1,5 +1,3 @@
-// Did I mention that I fucking hate dealing with Tags
-
 use std::{collections::HashMap, env, fs};
 
 use shambler::Vector3 as SV3;

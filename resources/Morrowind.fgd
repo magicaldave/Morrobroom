@@ -1,0 +1,10 @@
+@SolidClass = worldspawn : "World entity" []
+
+@baseclass size(-10 -10 -22, 10 10 22) color(0 255 0) = PlayerClass []
+
+@PointClass base(PlayerClass) = info_player_start : "Player 1 start" []
+
+@SolidClass = BOOK : "Base Book Entity"
+[
+    RefId(string) : "Ref Id for the book" : "The Lusty Argonian Maid"
+]
