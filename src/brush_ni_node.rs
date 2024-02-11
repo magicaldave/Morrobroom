@@ -183,7 +183,11 @@ impl BrushNiNode {
     }
 
     fn collect(&mut self) {
-        self.distance_from_origin = find_closest_vertex(&self.vis_verts);
+        // println!("Calculating node position from vertices");
+
+        if self.vis_verts.len() > 0 {
+            self.distance_from_origin = find_closest_vertex(&self.vis_verts)
+        }
 
         Self::to_nif_format(&mut self.vis_data, &self.vis_verts, &self.vis_tris);
         Self::to_nif_format(&mut self.col_data, &self.col_verts, &self.col_tris);
