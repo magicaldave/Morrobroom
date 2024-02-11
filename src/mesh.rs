@@ -11,7 +11,7 @@ pub struct Mesh {
     pub game_object: esp::TES3Object,
     pub node_distances: Vec<SV3>,
     pub stream: NiStream,
-    base_index: NiLink<NiNode>,
+    pub base_index: NiLink<NiNode>,
     collision_index: NiLink<RootCollisionNode>,
     final_distance: SV3,
     root_index: NiLink<NiNode>,
