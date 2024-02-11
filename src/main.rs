@@ -1,7 +1,11 @@
-use std::{collections::HashMap, env, fs};
+use std::{collections::HashMap, fs, path::Path};
 
+use clap::{Arg, ArgAction, Command};
 use shambler::Vector3 as SV3;
-use tes3::{esp, nif::NiTriShapeData};
+use tes3::{
+    esp::{self, EditorId, Header, ObjectFlags, Plugin},
+    nif::NiTriShapeData,
+};
 
 mod brush_ni_node;
 use brush_ni_node::BrushNiNode;
@@ -15,60 +19,71 @@ mod surfaces;
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 fn main() {
-    let args: Vec<_> = env::args().collect();
-    let map_name;
+    let args = Command::new("morrobroom")
+        .about("Compile trenchbroom .map files into usable Morrowind mods.")
+    .override_usage("morrobroom \"Map_Name.map\" \"Path/To/Morrowind/Data Files/\"")
+    .arg_required_else_help(true)
+    .args(&[
+        Arg::new("MAP_NAME")
+            .help("Input map file name.")
+            .value_parser(validate_input_map)
+            .required(true),
+        Arg::new("MW_DIR")
+            .help("Morrowind install directory. Due to trenchbroom behavior you should use manually created symlinks or junctions to achieve vfs-like functionality.")
+            .value_parser(check_morrowind_directory)
+            .required(true),
+        Arg::new("PLUGIN_NAME")
+            .help("Morrowind install directory. Due to trenchbroom behavior you should use manually created symlinks or junctions to achieve vfs-like functionality.")
+            .value_parser(validate_input_plugin),
+    ])
+    .get_matches();
 
-    match args.len() {
-        2 => map_name = &args[1],
-        _ => panic!(
-            "No map to parse! Please provide the path to the desired .map file as an argument."
-        ),
+    let mw_dir = args.get_one::<String>("MW_DIR").unwrap();
+    let map_name = args.get_one::<String>("MAP_NAME").unwrap();
+    let (workdir, map_dir) = create_workdir(&map_name);
+    // Default plugin name is just the name of the map, but esp instead.
+    let map_id = &map_name[..map_name.len() - 4].to_string();
+
+    // println!("Map ID is: {workdir}/{map_dir}.esp");
+    let plugin_str = format!("{workdir}/{map_dir}.esp");
+
+    let plugin_name = match args.get_one::<String>("PLUGIN_NAME") {
+        Some(name) => name,
+        None => &plugin_str,
     };
 
-    let workdir = create_workdir(&map_name);
+    println!("{plugin_name}");
+
+    let mut plugin = esp::Plugin::from_path(plugin_name).unwrap_or(esp::Plugin::default());
+
+    create_header_if_missing(&mut plugin);
+
+    // Push the cell record to the plugin
+    // It can't be done multiple times :/
+    let mut cell = esp::Cell::default();
+    cell.data.flags = esp::CellFlags::IS_INTERIOR;
+    cell.name = map_dir.clone();
+
+    cell.atmosphere_data = Some(esp::AtmosphereData {
+        ambient_color: [255, 255, 255, 255],
+        fog_density: 1. as f32,
+        sunlight_color: [255, 255, 255, 255],
+        fog_color: [255, 255, 255, 255],
+    });
+
+    // println!("MW_Dir is: {mw_dir}");
+
+    // println!("Workdir is: {workdir}");
 
     let map_data = MapData::new(map_name);
     let mut processed_base_objects: HashMap<String, String> = HashMap::new();
+
+    let mut indices: u32 = 0;
 
     for (entity_id, brushes) in map_data.geomap.entity_brushes.iter() {
         let prop_map = map_data.get_entity_properties(entity_id);
 
         let mut mesh = Mesh::from_map(brushes, &map_data);
-
-        let ref_id = match prop_map.get(&"RefId".to_string()) {
-            Some(ref_id) => {
-                if processed_base_objects.contains_key(&ref_id.to_string()) {
-                    // Not sure what to do here.
-                    // In this case, the object has already had a mesh generated.
-                    // But, we need to collect its vertices to know what position to provide it.
-                    // Maybe we should just have a specific function or behavior that only gets the vertices here.
-                    // Starting to get ugly.
-                    // continue;
-                    println!("Already processed {ref_id} mesh, it should only have a cellRef and not a new mesh.");
-                } else {
-                    println!("Adding {ref_id} to unique set");
-                    // processed_base_objects.push(ref_id.to_string());
-                }
-                ref_id.to_string()
-            }
-            None => {
-                format!("scene_{entity_id}")
-                // println!("This object has no refid, and isn't part of a group. It may be the worldspawn?");
-            }
-        };
-
-        match prop_map.get(&"classname".to_string()) {
-            Some(classname) => match classname.as_str() {
-                "BOOK" => {
-                    mesh.game_object = esp::TES3Object::Book(tes3::esp::Book {
-                        id: ref_id.clone(),
-                        ..Default::default()
-                    })
-                }
-                _ => {}
-            },
-            None => {} // object has no refid, and it's not a group, but it is a member of a group. This maybe shouldn't happen
-        }
 
         match prop_map.get(&"_tb_id".to_string()) {
             Some(group_id) => {
@@ -129,44 +144,107 @@ fn main() {
 
         let mesh_distance = find_closest_vertex(&mesh.node_distances);
 
-        mesh.stream
-            .objects_of_type_mut::<NiTriShapeData>()
-            .flat_map(|shape| shape.vertices.iter_mut())
-            .for_each(|vertex| {
-                vertex.x -= mesh_distance.x;
-                vertex.y -= mesh_distance.y;
-                vertex.z -= mesh_distance.z;
-            });
+        if let Some(base_node) = mesh.stream.get_mut(mesh.base_index) {
+            base_node.translation = [-mesh_distance.x, -mesh_distance.y, -mesh_distance.z].into()
+        }
 
-        let mesh_name = format!("Meshes/{workdir}/test_{entity_id}.nif");
+        // mesh.stream
+        //     .objects_of_type_mut::<NiTriShapeData>()
+        //     .flat_map(|shape| shape.vertices.iter_mut())
+        //     .for_each(|vertex| {
+        //         vertex.x -= mesh_distance.x;
+        //         vertex.y -= mesh_distance.y;
+        //         vertex.z -= mesh_distance.z;
+        //     });
+
+        let ref_id = match prop_map.get(&"RefId".to_string()) {
+            Some(ref_id) => {
+                if processed_base_objects.contains_key(&ref_id.to_string()) {
+                    // Not sure what to do here.
+                    // In this case, the object has already had a mesh generated.
+                    // But, we need to collect its vertices to know what position to provide it.
+                    // Maybe we should just have a specific function or behavior that only gets the vertices here.
+                    // Starting to get ugly.
+                    // continue;
+                    println!("Already processed {ref_id} mesh, it should only have a cellRef and not a new mesh.");
+                } else {
+                    println!("Adding {ref_id} to unique set");
+                    // processed_base_objects.push(ref_id.to_string());
+                }
+                ref_id.to_string()
+            }
+            None => {
+                format!("scene_{entity_id}")
+                // println!("This object has no refid, and isn't part of a group. It may be the worldspawn?");
+            }
+        };
+
+        let mesh_name = format!("{workdir}/Meshes/{map_dir}/{ref_id}.nif");
+
+        println!("Saving mesh as {mesh_name}");
 
         // Every entity is its own mesh
         mesh.save(&mesh_name);
 
+        // We create the base record for the objects here.
+        match prop_map.get(&"classname".to_string()) {
+            Some(classname) => match classname.as_str() {
+                "BOOK" => {
+                    mesh.game_object = esp::TES3Object::Book(tes3::esp::Book {
+                        id: ref_id.clone(),
+                        mesh: format!("{map_dir}/{ref_id}.nif"),
+                        ..Default::default()
+                    })
+                }
+                _ => {
+                    mesh.game_object = esp::TES3Object::Static(tes3::esp::Static {
+                        id: ref_id.clone(),
+                        mesh: format!("{map_dir}/{ref_id}.nif"),
+                        ..Default::default()
+                    })
+                }
+            },
+            None => {
+                mesh.game_object = esp::TES3Object::Book(tes3::esp::Book {
+                    id: ref_id.clone(),
+                    mesh: format!("{map_dir}/{ref_id}.nif"),
+                    ..Default::default()
+                })
+            } // object has no refid, and it's not a group, but it is a member of a group. This maybe shouldn't happen
+        }
+
+        plugin.objects.push(mesh.game_object);
+
+        let new_cellref = esp::Reference {
+            id: ref_id.clone(),
+            mast_index: 0 as u32,
+            refr_index: indices,
+            translation: [mesh_distance.x, mesh_distance.y, mesh_distance.z],
+            ..Default::default()
+        };
+
+        cell.references.insert((0 as u32, indices), new_cellref);
+
         processed_base_objects.insert(ref_id, mesh_name);
-    }
-}
 
-fn create_workdir(map_name: &String) -> String {
-    let ext_index = map_name
-        .rfind('.')
-        .expect("Map should always have an extension, this is probably a directory");
-
-    let workdir = &map_name[..ext_index];
-
-    if !fs::metadata("Meshes").is_ok() {
-        fs::create_dir("Meshes").expect("Folder creation failed! This is very bad!")
+        indices += 1;
     }
 
-    if !fs::metadata(format!("Meshes/{workdir}")).is_ok() {
-        fs::create_dir(format!("Meshes/{workdir}"))
-            .expect("Folder creation failed! This is very bad!")
-    }
+    plugin.objects.push(esp::TES3Object::Cell(cell));
 
-    workdir.to_string()
+    println!("{plugin_name}");
+
+    plugin
+        .save_path(plugin_name)
+        .expect("Plugin should have saved successfully!");
 }
 
 fn find_closest_vertex(verts: &Vec<SV3>) -> SV3 {
+    if verts.len() == 0 {
+        println!("WARNING: Empty vertex set had a position requested. This object has probably been clipped out of visibility space. Returning 0, 0, 0 for this object's position.");
+        return SV3::default();
+    }
+
     // Initialize the closest vertex with the first vertex in vis_data
     let mut closest_vertex = verts[0];
     // Initialize the maximum distance squared with the squared distance of the first vertex
@@ -187,4 +265,120 @@ fn find_closest_vertex(verts: &Vec<SV3>) -> SV3 {
 
     // Return the closest vertex
     closest_vertex
+}
+
+fn create_header_if_missing(plugin: &mut Plugin) {
+    let mut has_header = false;
+
+    // We only need to make the header once, so we should check for it
+    for header in plugin.objects_of_type::<esp::Header>() {
+        has_header = true;
+        break;
+    }
+
+    if !has_header {
+        let mut header = esp::Header {
+            version: 1.3,
+            ..Default::default()
+        };
+        // Later during serialization, we should make sure to include author and header info.
+        plugin.objects.push(esp::TES3Object::Header(header));
+    };
+}
+
+fn validate_input_map(arg: &str) -> Result<String, String> {
+    if arg != "-" {
+        let path = arg.as_ref();
+        validate_map_extension(path)?;
+        if !path.exists() {
+            return Err(format!("\"{}\" (file does not exist).", path.display()));
+        }
+    }
+    Ok(arg.into())
+}
+
+fn validate_input_plugin(arg: &str) -> Result<String, String> {
+    if arg != "-" {
+        let path = arg.as_ref();
+        validate_plugin_extension(path)?;
+        if !path.exists() {
+            return Err(format!("\"{}\" (file does not exist).", path.display()));
+        }
+    }
+    Ok(arg.into())
+}
+
+fn create_workdir(map_name: &String) -> (String, String) {
+    let dir_index = map_name
+        .rfind('/')
+        .expect("Map should always have an extension, this is probably a directory");
+
+    let ext_index = map_name
+        .rfind('.')
+        .expect("Map should always have an extension, this is probably a directory");
+
+    let workdir = &map_name[..dir_index - 3];
+    let map_dir = &map_name[dir_index + 1..ext_index];
+
+    if !fs::metadata(format!("{workdir}")).is_ok() {
+        fs::create_dir(format!("{workdir}"))
+            .expect("Root workdir folder creation failed! This is very bad!")
+    }
+
+    if !fs::metadata(format!("{workdir}/Meshes/")).is_ok() {
+        fs::create_dir(format!("{workdir}/Meshes/"))
+            .expect("Workdir meshes folder creation failed! This is very bad!")
+    }
+
+    if !fs::metadata(format!("{workdir}/Meshes/{map_dir}")).is_ok() {
+        fs::create_dir(format!("{workdir}/Meshes/{map_dir}"))
+            .expect("Workdir map folder creation failed! This is very bad!")
+    }
+
+    (workdir.to_string(), map_dir.to_string())
+}
+
+fn validate_map_extension(path: &Path) -> Result<(), String> {
+    let ext = get_extension(path);
+    if matches!(&*ext, "map") {
+        return Ok(());
+    }
+    Err(format!("\"{}\" is not a map file!.", path.display()))
+}
+
+fn validate_plugin_extension(path: &Path) -> Result<(), String> {
+    let ext = get_extension(path);
+    if matches!(&*ext, "esp" | "esm" | "omwaddon" | "omwgame") {
+        return Ok(());
+    }
+    Err(format!("\"{}\" is not a map file!.", path.display()))
+}
+
+fn get_extension(path: &Path) -> String {
+    path.extension()
+        .unwrap_or_default()
+        .to_string_lossy()
+        .to_ascii_lowercase()
+}
+
+fn check_morrowind_directory(dir_path: &str) -> Result<String, String> {
+    let path = std::path::Path::new(dir_path);
+
+    if !path.exists() {
+        return Err(format!("Directory '{}' does not exist.", dir_path));
+    }
+
+    if !path.is_dir() {
+        return Err(format!("'{}' is not a directory.", dir_path));
+    }
+
+    let esm_path = path.join("Morrowind.esm");
+    if !esm_path.exists() {
+        return Err(format!(
+            "'{}' does not appear to be a valid Morrowind directory as it does not contain Morrowind.esm.",
+            dir_path
+        ));
+    }
+
+    Ok(dir_path.to_string())
 }
