@@ -11,6 +11,9 @@ mod mesh;
 use mesh::Mesh;
 mod surfaces;
 
+#[global_allocator]
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
 fn main() {
     let args: Vec<_> = env::args().collect();
     let map_name;
