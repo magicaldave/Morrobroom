@@ -52,15 +52,23 @@ fn main() {
         None => &plugin_str,
     };
 
-    println!("{plugin_name}");
-
     let mut plugin = esp::Plugin::from_path(plugin_name).unwrap_or(esp::Plugin::default());
 
     create_header_if_missing(&mut plugin);
 
     // Push the cell record to the plugin
     // It can't be done multiple times :/
-    let mut cell = esp::Cell::default();
+    let mut cell = match plugin
+        .objects_of_type_mut::<esp::Cell>()
+        .find(|obj| obj.name == map_dir)
+    {
+        Some(cell) => {
+            cell.references.clear();
+            cell.to_owned()
+        }
+        None => esp::Cell::default(),
+    };
+
     cell.data.flags = esp::CellFlags::IS_INTERIOR;
     cell.name = map_dir.clone();
 
@@ -183,9 +191,6 @@ fn main() {
 
         println!("Saving mesh as {mesh_name}");
 
-        // Every entity is its own mesh
-        mesh.save(&mesh_name);
-
         // We create the base record for the objects here.
         match prop_map.get(&"classname".to_string()) {
             Some(classname) => match classname.as_str() {
@@ -213,7 +218,12 @@ fn main() {
             } // object has no refid, and it's not a group, but it is a member of a group. This maybe shouldn't happen
         }
 
-        plugin.objects.push(mesh.game_object);
+        // Also use linked groups to determine if the mesh & base def should be ignored
+        if !plugin.objects.contains(&mesh.game_object) {
+            println!("Saving mesh and base object definition for {ref_id} to plugin");
+            mesh.save(&mesh_name);
+            plugin.objects.push(mesh.game_object);
+        }
 
         let new_cellref = esp::Reference {
             id: ref_id.clone(),
@@ -230,7 +240,18 @@ fn main() {
         indices += 1;
     }
 
-    plugin.objects.push(esp::TES3Object::Cell(cell));
+    let is_in_plugin = if let None = plugin
+        .objects_of_type_mut::<esp::Cell>()
+        .find(|obj| obj.name == map_dir)
+    {
+        false
+    } else {
+        true
+    };
+
+    if !is_in_plugin {
+        plugin.objects.push(esp::TES3Object::Cell(cell))
+    }
 
     println!("{plugin_name}");
 
@@ -267,23 +288,19 @@ fn find_closest_vertex(verts: &Vec<SV3>) -> SV3 {
     closest_vertex
 }
 
+/// Should probably make some specific struct for handling ESP objects
 fn create_header_if_missing(plugin: &mut Plugin) {
-    let mut has_header = false;
-
-    // We only need to make the header once, so we should check for it
-    for header in plugin.objects_of_type::<esp::Header>() {
-        has_header = true;
-        break;
+    match plugin.objects_of_type::<esp::Header>().count() {
+        0 => {
+            let mut header = esp::Header {
+                version: 1.3,
+                ..Default::default()
+            };
+            // Later during serialization, we should make sure to include author and header info.
+            plugin.objects.push(esp::TES3Object::Header(header));
+        }
+        _ => {}
     }
-
-    if !has_header {
-        let mut header = esp::Header {
-            version: 1.3,
-            ..Default::default()
-        };
-        // Later during serialization, we should make sure to include author and header info.
-        plugin.objects.push(esp::TES3Object::Header(header));
-    };
 }
 
 fn validate_input_map(arg: &str) -> Result<String, String> {
