@@ -33,7 +33,7 @@ fn main() {
             .value_parser(check_morrowind_directory)
             .required(true),
         Arg::new("PLUGIN_NAME")
-            .help("Morrowind install directory. Due to trenchbroom behavior you should use manually created symlinks or junctions to achieve vfs-like functionality.")
+            .help("Output plugin name. Can be a new or existing plugin.")
             .value_parser(validate_input_plugin),
     ])
     .get_matches();
