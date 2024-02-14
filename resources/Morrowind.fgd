@@ -4,7 +4,61 @@
 
 @PointClass base(PlayerClass) = info_player_start : "Player 1 start" []
 
-@SolidClass = BOOK : "Base Book Entity"
+@BaseClass = REF
 [
-    RefId(string) : "Ref Id for the book" : "The Lusty Argonian Maid"
+    RefId(string) : "Ref Id for the object" : "agronian guy"
+    Name(string)  : "Ingame readable name for the book" : "Tarhiel"
+    Script(string) : "Id of the script used by the object. Optional. Be warned that all instances of this refId will share the script." : "fallingScript"
+]
+
+@BaseClass base(REF) = CARRYABLE : "Base Entity"
+[
+    Icon(string) : "Ingame icon used by the object. Visible within TrenchBroom. Be sure to include the relative path to the icon." : "tx_goldicon.tga"
+    Value(int) : "Gold Value of the object ingame" : 420
+    Enchantment(string): "Enchantment attached to the item. Requires a separate definition for the enchantment itself, which cannot be made in Trenchbroom." : "sc_icarianflight_en"
+    EnchantmentPoints(int): "Strength of possible enchantments applied to this particular item." : "60"
+]
+
+@SolidClass base(CARRYABLE) = BOOK : "Base Book Entity"
+[
+
+    IsScroll(choices) : "Book Type" : 0 =
+	[
+		0 : "Book"
+		1 : "Scroll"
+	]
+
+    Skill(choices) : "Skill raised by this book." = [
+        -1: "None"
+        0: "Block"
+        1: "Armorer"
+        2: "MediumArmor"
+        3: "HeavyArmor"
+        4: "BluntWeapon"
+        5: "LongBlade"
+        6: "Axe"
+        7: "Spear"
+        8: "Athletics"
+        9: "Enchant"
+        10: "Destruction"
+        11: "Alteration"
+        12: "Illusion"
+        13: "Conjuration"
+        14: "Mysticism"
+        15: "Restoration"
+        16: "Alchemy"
+        17: "Unarmored"
+        18: "Security"
+        19: "Sneak"
+        20: "Acrobatics"
+        21: "LightArmor"
+        22: "ShortBlade"
+        23: "Marksman"
+        24: "Mercantile"
+        25: "Speechcraft"
+        26: "HandToHand"
+    ]
+
+    Text(String) : "Text of the book. You probably shouldn't write this here, but, you can."
+    
 ]
