@@ -240,24 +240,13 @@ fn main() {
         indices += 1;
     }
 
-    let is_in_plugin = if let None = plugin
-        .objects_of_type_mut::<esp::Cell>()
-        .find(|obj| obj.name == map_dir)
-    {
-        false
-    } else {
-        true
-    };
-
-    if !is_in_plugin {
-        plugin.objects.push(esp::TES3Object::Cell(cell))
-    }
-
-    println!("{plugin_name}");
-
+    plugin.objects.retain(|obj| obj.editor_id() != cell.name);
+    plugin.objects.push(esp::TES3Object::Cell(cell));
     plugin
         .save_path(plugin_name)
-        .expect("Plugin should have saved successfully!");
+        .expect("Saving plugin failed!");
+
+    println!("Wrote {plugin_name} to disk successfully.");
 }
 
 fn find_closest_vertex(verts: &Vec<SV3>) -> SV3 {
