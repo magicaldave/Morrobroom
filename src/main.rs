@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fs, path::Path};
+use std::{cmp::min, collections::HashMap, fs, path::Path};
 
 use clap::{Arg, ArgAction, Command};
 use shambler::Vector3 as SV3;
@@ -41,6 +41,7 @@ fn main() {
     let mw_dir = args.get_one::<String>("MW_DIR").unwrap();
     let map_name = args.get_one::<String>("MAP_NAME").unwrap();
     let (workdir, map_dir) = create_workdir(&map_name);
+
     // Default plugin name is just the name of the map, but esp instead.
     let map_id = &map_name[..map_name.len() - 4].to_string();
 
@@ -156,15 +157,6 @@ fn main() {
             base_node.translation = [-mesh_distance.x, -mesh_distance.y, -mesh_distance.z].into()
         }
 
-        // mesh.stream
-        //     .objects_of_type_mut::<NiTriShapeData>()
-        //     .flat_map(|shape| shape.vertices.iter_mut())
-        //     .for_each(|vertex| {
-        //         vertex.x -= mesh_distance.x;
-        //         vertex.y -= mesh_distance.y;
-        //         vertex.z -= mesh_distance.z;
-        //     });
-
         let ref_id = match prop_map.get(&"RefId".to_string()) {
             Some(ref_id) => {
                 if processed_base_objects.contains_key(&ref_id.to_string()) {
@@ -179,15 +171,16 @@ fn main() {
                     println!("Adding {ref_id} to unique set");
                     // processed_base_objects.push(ref_id.to_string());
                 }
-                ref_id.to_string()
+                ref_id[..min(ref_id.len(), 32)].to_string()
             }
             None => {
-                format!("scene_{entity_id}")
+                let ref_id = format!("{map_dir}-scene-{entity_id}");
+                ref_id[..min(ref_id.len(), 32)].to_string()
                 // println!("This object has no refid, and isn't part of a group. It may be the worldspawn?");
             }
         };
 
-        let mesh_name = format!("{workdir}/Meshes/{map_dir}/{ref_id}.nif");
+        let mesh_name = format!("{}/{}.nif", map_dir, ref_id);
 
         println!("Saving mesh as {mesh_name}");
 
@@ -196,23 +189,23 @@ fn main() {
             Some(classname) => match classname.as_str() {
                 "BOOK" => {
                     mesh.game_object = esp::TES3Object::Book(tes3::esp::Book {
-                        id: ref_id.clone(),
-                        mesh: format!("{map_dir}/{ref_id}.nif"),
+                        id: ref_id.to_owned(),
+                        mesh: mesh_name.to_owned(),
                         ..Default::default()
                     })
                 }
                 _ => {
                     mesh.game_object = esp::TES3Object::Static(tes3::esp::Static {
-                        id: ref_id.clone(),
-                        mesh: format!("{map_dir}/{ref_id}.nif"),
+                        id: ref_id.to_owned(),
+                        mesh: mesh_name.to_owned(),
                         ..Default::default()
                     })
                 }
             },
             None => {
                 mesh.game_object = esp::TES3Object::Book(tes3::esp::Book {
-                    id: ref_id.clone(),
-                    mesh: format!("{map_dir}/{ref_id}.nif"),
+                    id: ref_id.to_owned(),
+                    mesh: mesh_name.to_owned(),
                     ..Default::default()
                 })
             } // object has no refid, and it's not a group, but it is a member of a group. This maybe shouldn't happen
@@ -221,12 +214,12 @@ fn main() {
         // Also use linked groups to determine if the mesh & base def should be ignored
         if !plugin.objects.contains(&mesh.game_object) {
             println!("Saving mesh and base object definition for {ref_id} to plugin");
-            mesh.save(&mesh_name);
+            mesh.save(&format!("{}/Meshes/{}", workdir, mesh_name));
             plugin.objects.push(mesh.game_object);
         }
 
         let new_cellref = esp::Reference {
-            id: ref_id.clone(),
+            id: ref_id.to_owned(),
             mast_index: 0 as u32,
             refr_index: indices,
             translation: [mesh_distance.x, mesh_distance.y, mesh_distance.z],
