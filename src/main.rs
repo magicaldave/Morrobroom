@@ -74,10 +74,10 @@ fn main() {
     cell.name = map_dir.clone();
 
     cell.atmosphere_data = Some(esp::AtmosphereData {
-        ambient_color: [255, 255, 255, 255],
+        ambient_color: [15, 15, 15, 75],
         fog_density: 1. as f32,
-        sunlight_color: [255, 255, 255, 255],
-        fog_color: [255, 255, 255, 255],
+        sunlight_color: [15, 15, 15, 75],
+        fog_color: [15, 15, 15, 75],
     });
 
     // println!("MW_Dir is: {mw_dir}");
