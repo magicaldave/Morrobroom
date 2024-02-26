@@ -4,25 +4,30 @@
 
 @PointClass base(PlayerClass) = info_player_start : "Player 1 start" []
 
-@BaseClass = REF
+@BaseClass = baseObject
 [
     RefId(string) : "Ref Id for the object" : "agronian guy"
     Name(string)  : "Ingame readable name for the book" : "Tarhiel"
-    Script(string) : "Id of the script used by the object. Optional. Be warned that all instances of this refId will share the script." : "fallingScript"
 ]
 
-@BaseClass base(REF) = CARRYABLE : "Base Entity"
+@BaseClass base(baseObject) = Referenceable : "Base Entity"
 [
+    Script(string) : "Id of the script used by the object. Optional. Be warned that all instances of this refId will share the script." : "fallingScript"
     Icon(string) : "Ingame icon used by the object. Visible within TrenchBroom. Be sure to include the relative path to the icon." : "tx_goldicon.tga"
     Value(int) : "Gold Value of the object ingame" : 420
+    Weight(float): "Weight of the object in Todd units." : "0.0"
+]
+
+@BaseClass base(Referenceable) = Wearable : "Wearable"
+[
     Enchantment(string): "Enchantment attached to the item. Requires a separate definition for the enchantment itself, which cannot be made in Trenchbroom." : "sc_icarianflight_en"
     EnchantmentPoints(int): "Strength of possible enchantments applied to this particular item." : "60"
 ]
 
-@SolidClass base(CARRYABLE) = BOOK : "Base Book Entity"
+@SolidClass base(Referenceable) = BOOK : "Base Book Entity"
 [
 
-    IsScroll(choices) : "Book Type" : 0 =
+    BookType(choices) : "Book Type" : 0 =
 	[
 		0 : "Book"
 		1 : "Scroll"
@@ -61,4 +66,26 @@
 
     Text(String) : "Text of the book. You probably shouldn't write this here, but, you can."
     
+]
+
+@SolidClass base(Referenceable) = LIGHT : "Brush Light"
+[
+    Sound(string) : "Internal SoundID played by this light. Can only be determined through a Morrowind Construction set."
+    Time(int) : "Amount of time the light will last before fading. A value of zero indicates the light does not expire."
+    Radius(int) : "Radius of the light"
+    color255(color) : "Light Color"
+    Transparency(int) : "Light transparency, up to 255."
+
+    LightFlags(Flags) =
+    	[
+	    	1 : "Dynamic" : 0
+            2 : "Carryable" : 0
+            4 : "Negative" : 0
+		    8 : "Flicker" : 0
+		    16 : "Fire" : 0
+		    32 : "OffByDefault" : 0
+		    64 : "FlickerSLOW" : 0
+		    128 : "Pulse" : 0
+		    256 : "PulseSlow" : 0
+        ]
 ]

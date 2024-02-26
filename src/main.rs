@@ -183,22 +183,26 @@ fn main() {
         match prop_map.get(&"classname".to_string()) {
             Some(classname) => match classname.as_str() {
                 "BOOK" => {
-                    mesh.game_object = esp::TES3Object::Book(tes3::esp::Book {
-                        id: ref_id.to_owned(),
-                        mesh: mesh_name.to_owned(),
-                        ..Default::default()
-                    })
+                    mesh.game_object = game_object::book(&prop_map, &ref_id, &mesh_name);
+                }
+                "LIGHT" => {
+                    // Keep in mind this is for lights made from brushes. We also need to support point lights, so that they don't necessarily have to be associated with an object.
+                    mesh.game_object = game_object::light(&prop_map, &ref_id, &mesh_name);
                 }
                 _ => {
+                    println!(
+                        "No matching object type found! {classname} requested for {entity_id}"
+                    );
                     mesh.game_object = esp::TES3Object::Static(tes3::esp::Static {
                         id: ref_id.to_owned(),
                         mesh: mesh_name.to_owned(),
                         ..Default::default()
                     })
-                }
+                } // Object has a class, but we don't know what it was.
             },
             None => {
-                mesh.game_object = esp::TES3Object::Book(tes3::esp::Book {
+                println!("No classname found for object! Requested for {entity_id}");
+                mesh.game_object = esp::TES3Object::Static(tes3::esp::Static {
                     id: ref_id.to_owned(),
                     mesh: mesh_name.to_owned(),
                     ..Default::default()
@@ -245,32 +249,34 @@ fn main() {
     println!("Wrote {plugin_name} to disk successfully.");
 }
 
-fn find_closest_vertex(verts: &Vec<SV3>) -> SV3 {
-    if verts.len() == 0 {
-        println!("WARNING: Empty vertex set had a position requested. This object has probably been clipped out of visibility space. Returning 0, 0, 0 for this object's position.");
-        return SV3::default();
+fn split_string_into_array(color_str: &String, alpha_str: &String) -> [u8; 4] {
+    let mut array = [0; 4];
+    let colors: Vec<&str> = color_str.split_whitespace().collect();
+
+    for (index, color) in colors.iter().enumerate() {
+        array[index] = color.parse::<u8>().unwrap_or_default();
     }
 
-    // Initialize the closest vertex with the first vertex in vis_data
-    let mut closest_vertex = verts[0];
-    // Initialize the maximum distance squared with the squared distance of the first vertex
-    let mut max_distance_squared =
-        verts[0].x * verts[0].x + verts[0].y * verts[0].y + verts[0].z * verts[0].z;
+    array[3] = alpha_str.parse::<u8>().unwrap_or_default();
 
-    // Iterate over the remaining provided vertices starting from the second vertex
-    for vertex in verts.iter().skip(1) {
-        // Calculate the squared distance from the origin for the current vertex
-        let distance_squared = vertex.x * vertex.x + vertex.y * vertex.y + vertex.z * vertex.z;
+    array
+}
 
-        // If the calculated distance is lower than the current maximum, update the closest vertex
-        if distance_squared < max_distance_squared {
-            closest_vertex = *vertex;
-            max_distance_squared = distance_squared;
-        }
-    }
+fn find_geometric_center(vertices: &Vec<SV3>) -> SV3 {
+    // Calculate the sum of each dimension using fold
+    let (sum_x, sum_y, sum_z) = vertices.iter().fold((0.0, 0.0, 0.0), |acc, v| {
+        (acc.0 + v.x, acc.1 + v.y, acc.2 + v.z)
+    });
 
-    // Return the closest vertex
-    closest_vertex
+    // Calculate the average position in each dimension
+    let num_vertices = vertices.len() as f32;
+    let center_x = sum_x / num_vertices;
+    let center_y = sum_y / num_vertices;
+    let center_z = sum_z / num_vertices;
+
+    println!("Object center is {center_x}, {center_y}, {center_z}");
+    // Return the geometric center as a new Vertex
+    SV3::new(center_x, center_y, center_z)
 }
 
 /// Should probably make some specific struct for handling ESP objects
