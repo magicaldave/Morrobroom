@@ -390,3 +390,10 @@ fn check_morrowind_directory(dir_path: &str) -> Result<String, String> {
 
     Ok(dir_path.to_string())
 }
+
+fn get_prop(prop_name: &str, prop_map: &HashMap<&String, &String>) -> String {
+    prop_map
+        .get(&prop_name.to_string())
+        .unwrap_or(&&String::default())
+        .to_string()
+}
