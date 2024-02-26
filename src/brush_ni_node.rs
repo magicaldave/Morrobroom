@@ -4,7 +4,7 @@ use shalrath;
 use shambler::{brush::BrushId, face::FaceId, Vector2 as SV2, Vector3 as SV3};
 use tes3::nif::{NiTriShape, NiTriShapeData};
 
-use crate::{find_closest_vertex, map_data::MapData, surfaces};
+use crate::{find_geometric_center, map_data::MapData, surfaces};
 
 pub struct BrushNiNode {
     pub vis_shape: NiTriShape,
@@ -183,10 +183,8 @@ impl BrushNiNode {
     }
 
     fn collect(&mut self) {
-        // println!("Calculating node position from vertices");
-
         if self.vis_verts.len() > 0 {
-            self.distance_from_origin = find_closest_vertex(&self.vis_verts)
+            self.distance_from_origin = find_geometric_center(&self.vis_verts)
         }
 
         Self::to_nif_format(&mut self.vis_data, &self.vis_verts, &self.vis_tris);

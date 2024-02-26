@@ -86,6 +86,7 @@ fn main() {
 
     let map_data = MapData::new(map_name);
     let mut processed_base_objects: HashMap<String, String> = HashMap::new();
+    let mut meshes: HashMap<String, Mesh> = HashMap::new();
 
     let mut indices: u32 = 0;
 
@@ -151,12 +152,6 @@ fn main() {
             None => {}
         }
 
-        let mesh_distance = find_closest_vertex(&mesh.node_distances);
-
-        if let Some(base_node) = mesh.stream.get_mut(mesh.base_index) {
-            base_node.translation = [-mesh_distance.x, -mesh_distance.y, -mesh_distance.z].into()
-        }
-
         let ref_id = match prop_map.get(&"RefId".to_string()) {
             Some(ref_id) => {
                 if processed_base_objects.contains_key(&ref_id.to_string()) {
@@ -211,11 +206,17 @@ fn main() {
             } // object has no refid, and it's not a group, but it is a member of a group. This maybe shouldn't happen
         }
 
+        let mut mesh_distance: SV3 = find_geometric_center(&mesh.node_distances) * 2.0;
+        mesh.final_distance = mesh_distance;
+
         // Also use linked groups to determine if the mesh & base def should be ignored
+        // Also we should probably just not check this way *only* and
+        // also destroy matching objects once the refId has been determined.
         if !plugin.objects.contains(&mesh.game_object) {
-            println!("Saving mesh and base object definition for {ref_id} to plugin");
+            println!("Saving base object definition for {ref_id} to plugin");
+            mesh.align_to_center();
             mesh.save(&format!("{}/Meshes/{}", workdir, mesh_name));
-            plugin.objects.push(mesh.game_object);
+            plugin.objects.push(mesh.game_object.clone());
         }
 
         let new_cellref = esp::Reference {
@@ -228,13 +229,15 @@ fn main() {
 
         cell.references.insert((0 as u32, indices), new_cellref);
 
-        processed_base_objects.insert(ref_id, mesh_name);
+        println!("{mesh_name} added to HashSet");
+        meshes.insert(mesh_name, mesh);
 
         indices += 1;
     }
 
     plugin.objects.retain(|obj| obj.editor_id() != cell.name);
     plugin.objects.push(esp::TES3Object::Cell(cell));
+    plugin.sort_objects();
     plugin
         .save_path(plugin_name)
         .expect("Saving plugin failed!");
