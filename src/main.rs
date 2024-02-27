@@ -179,15 +179,18 @@ fn main() {
         // We create the base record for the objects here.
         match prop_map.get(&"classname".to_string()) {
             Some(classname) => match classname.as_str() {
-                "ACTIVATOR" => {
+                "world_Activator" => {
                     mesh.game_object = game_object::activator(&prop_map, &ref_id, &mesh_name);
                 }
-                "BOOK" => {
+                "item_Book" => {
                     mesh.game_object = game_object::book(&prop_map, &ref_id, &mesh_name);
                 }
-                "LIGHT" => {
+                "item_Light" => {
                     // Keep in mind this is for lights made from brushes. We also need to support point lights, so that they don't necessarily have to be associated with an object.
                     mesh.game_object = game_object::light(&prop_map, &ref_id, &mesh_name);
+                }
+                "item_Armor" => {
+                    mesh.game_object = game_object::armor(&prop_map, &ref_id, &mesh_name);
                 }
                 _ => {
                     println!(

@@ -1,8 +1,8 @@
 use crate::surfaces;
 use std::collections::HashMap;
 use tes3::esp::{
-    Activator, Book, BookData, BookType, Light, LightData, LightFlags, ObjectFlags, SkillId,
-    TES3Object,
+    Activator, Armor, ArmorData, BipedObject, Book, BookData, BookType, Light, LightData,
+    LightFlags, ObjectFlags, SkillId, TES3Object,
 };
 
 pub fn activator(
@@ -17,6 +17,63 @@ pub fn activator(
         mesh: mesh_name.to_owned(),
         ..Default::default()
     })
+}
+
+pub fn armor(
+    entity_props: &HashMap<&String, &String>,
+    ref_id: &str,
+    mesh_name: &str,
+) -> TES3Object {
+    TES3Object::Armor(Armor {
+        flags: ObjectFlags::default(),
+        id: ref_id.to_owned(),
+        name: get_prop("Name", entity_props),
+        script: get_prop("Script", entity_props),
+        mesh: mesh_name.to_owned(),
+        icon: get_prop("Icon", entity_props),
+        enchanting: get_prop("Enchantment", entity_props),
+        data: ArmorData {
+            armor_type: get_prop("ArmorType", entity_props),
+            armor_rating: get_prop("ArmorRating", entity_props)
+                .parse::<u32>()
+                .unwrap_or_default(),
+            weight: get_prop("Weight", entity_props)
+                .parse::<f32>()
+                .unwrap_or_default(),
+            value: get_prop("Value", entity_props)
+                .parse::<u32>()
+                .unwrap_or_default(),
+            health: get_prop("Health", entity_props)
+                .parse::<u32>()
+                .unwrap_or_default(),
+            enchantment: get_prop("EnchantmentPoints", entity_props)
+                .parse::<u32>()
+                .unwrap_or_default(),
+        },
+    })
+}
+
+fn collect_biped_objects(prop_map: &HashMap<&String, &String>) -> Vec<String> {
+    let mut biped_objects = Vec::new();
+
+    for count in 1..8 {
+        match prop_map.get(&format!("SlotType{count}")) {
+            Some(biped_object) => biped_objects.push(BipedObject {
+                biped_object_type: biped_object,
+                male_bodypart: prop_map
+                    .get(&format!("male_part{count}"))
+                    .unwrap_or(&&String::default())
+                    .to_string(),
+                female_bodypart: prop_map
+                    .get(&format!("female_part{count}"))
+                    .unwrap_or(&&String::default())
+                    .to_string(),
+            }),
+            None => continue,
+        }
+    }
+
+    biped_objects
 }
 
 pub fn book(entity_props: &HashMap<&String, &String>, ref_id: &str, mesh_name: &str) -> TES3Object {

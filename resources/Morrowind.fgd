@@ -4,6 +4,7 @@
 
 @PointClass base(PlayerClass) = info_player_start : "Player 1 start" []
 
+// Begin common classes
 @BaseClass = baseObject
 [
     RefId(string) : "Ref Id for the object" : "agronian guy"
@@ -14,7 +15,7 @@
 [
     Script(string) : "Id of the script used by the object. Optional. Be warned that all instances of this refId will share the script." : "fallingScript"
     Icon(string) : "Ingame icon used by the object. Visible within TrenchBroom. Be sure to include the relative path to the icon." : "tx_goldicon.tga"
-    Value(int) : "Gold Value of the object ingame" : 420
+    Value(int) : "Gold value of the object ingame" : 420
     Weight(float): "Weight of the object in Todd units." : "0.0"
     Mangle(string): "Object rotation, not meant to be adjusted in the property view"
 ]
@@ -25,13 +26,361 @@
     EnchantmentPoints(int): "Strength of possible enchantments applied to this particular item." : "60"
 ]
 
+// Used by both clothing and armor. Awkward hack.
+
+@BaseClass = BipedObject1 : "Body Part 1"
+[
+    SlotType1(choices): "Slot Used" : 0 =
+    [
+        0 : "Head"
+        1 : "Hair"
+        2 : "Neck"
+        3 : "Chest"
+        4 : "Groin"
+        5 : "Skirt"
+        6 : "Right Hand"
+        7 : "Left Hand"
+        8 : "Right Wrist"
+        9 : "Left Wrist"
+        10 : "Shield"
+        11 : "Right Forearm"
+        12 : "Left Forearm"
+        13 : "Right Upper Arm"
+        14 : "Left Upper Arm"
+        15 : "Right Foot"
+        16 : "Left Foot"
+        17 : "Right Ankle"
+        18 : "Left Ankle"
+        19 : "Right Knee"
+        20 : "Left Knee"
+        21 : "Right Upper Leg"
+        22 : "Left Upper Leg"
+        23 : "Right Pauldron"
+        24 : "Left Pauldron"
+        25 : "Weapon"
+        26 : "Tail"
+    ]
+
+    male_part1(String) : "Mesh used for male body, slot 1"
+    female_part1(String) : "Mesh used for female body, slot 1"
+]
+
+@BaseClass = BipedObject2 : "Body Part 2"
+[
+    SlotType2(choices): "Slot Used" : 0 =
+    [
+        0 : "Head"
+        1 : "Hair"
+        2 : "Neck"
+        3 : "Chest"
+        4 : "Groin"
+        5 : "Skirt"
+        6 : "Right Hand"
+        7 : "Left Hand"
+        8 : "Right Wrist"
+        9 : "Left Wrist"
+        10 : "Shield"
+        11 : "Right Forearm"
+        12 : "Left Forearm"
+        13 : "Right Upper Arm"
+        14 : "Left Upper Arm"
+        15 : "Right Foot"
+        16 : "Left Foot"
+        17 : "Right Ankle"
+        18 : "Left Ankle"
+        19 : "Right Knee"
+        20 : "Left Knee"
+        21 : "Right Upper Leg"
+        22 : "Left Upper Leg"
+        23 : "Right Pauldron"
+        24 : "Left Pauldron"
+        25 : "Weapon"
+        26 : "Tail"
+    ]
+    male_part2(String) : "Mesh used for male body, slot 2"
+    female_part2(String) : "Mesh used for female body, slot 2"
+]
+
+@BaseClass = BipedObject3 : "Body Part 3"
+[
+    SlotType3(choices): "Slot Used" : 0 =
+    [
+        0 : "Head"
+        1 : "Hair"
+        2 : "Neck"
+        3 : "Chest"
+        4 : "Groin"
+        5 : "Skirt"
+        6 : "Right Hand"
+        7 : "Left Hand"
+        8 : "Right Wrist"
+        9 : "Left Wrist"
+        10 : "Shield"
+        11 : "Right Forearm"
+        12 : "Left Forearm"
+        13 : "Right Upper Arm"
+        14 : "Left Upper Arm"
+        15 : "Right Foot"
+        16 : "Left Foot"
+        17 : "Right Ankle"
+        18 : "Left Ankle"
+        19 : "Right Knee"
+        20 : "Left Knee"
+        21 : "Right Upper Leg"
+        22 : "Left Upper Leg"
+        23 : "Right Pauldron"
+        24 : "Left Pauldron"
+        25 : "Weapon"
+        26 : "Tail"
+    ]
+    male_part1(String) : "Mesh used for male body, slot 3"
+    female_part1(String) : "Mesh used for female body, slot 3"
+]
+
+@BaseClass = BipedObject4 : "Body Part 4"
+[
+    SlotType4(choices): "Slot Used" : 0 =
+    [
+        0 : "Head"
+        1 : "Hair"
+        2 : "Neck"
+        3 : "Chest"
+        4 : "Groin"
+        5 : "Skirt"
+        6 : "Right Hand"
+        7 : "Left Hand"
+        8 : "Right Wrist"
+        9 : "Left Wrist"
+        10 : "Shield"
+        11 : "Right Forearm"
+        12 : "Left Forearm"
+        13 : "Right Upper Arm"
+        14 : "Left Upper Arm"
+        15 : "Right Foot"
+        16 : "Left Foot"
+        17 : "Right Ankle"
+        18 : "Left Ankle"
+        19 : "Right Knee"
+        20 : "Left Knee"
+        21 : "Right Upper Leg"
+        22 : "Left Upper Leg"
+        23 : "Right Pauldron"
+        24 : "Left Pauldron"
+        25 : "Weapon"
+        26 : "Tail"
+    ]
+    male_part4(String) : "Mesh used for male body, slot 4"
+    female_part4(String) : "Mesh used for female body, slot 4"
+]
+
+@BaseClass = BipedObject5 : "Body Part 5"
+[
+    SlotType5(choices): "Slot Used" : 0 =
+    [
+        0 : "Head"
+        1 : "Hair"
+        2 : "Neck"
+        3 : "Chest"
+        4 : "Groin"
+        5 : "Skirt"
+        6 : "Right Hand"
+        7 : "Left Hand"
+        8 : "Right Wrist"
+        9 : "Left Wrist"
+        10 : "Shield"
+        11 : "Right Forearm"
+        12 : "Left Forearm"
+        13 : "Right Upper Arm"
+        14 : "Left Upper Arm"
+        15 : "Right Foot"
+        16 : "Left Foot"
+        17 : "Right Ankle"
+        18 : "Left Ankle"
+        19 : "Right Knee"
+        20 : "Left Knee"
+        21 : "Right Upper Leg"
+        22 : "Left Upper Leg"
+        23 : "Right Pauldron"
+        24 : "Left Pauldron"
+        25 : "Weapon"
+        26 : "Tail"
+    ]
+    male_part5(String) : "Mesh used for male body, slot 5"
+    female_part5(String) : "Mesh used for female body, slot 5"
+]
+
+@BaseClass = BipedObject6 : "Body Part 6"
+[
+    SlotType6(choices): "Slot Used" : 0 =
+    [
+        0 : "Head"
+        1 : "Hair"
+        2 : "Neck"
+        3 : "Chest"
+        4 : "Groin"
+        5 : "Skirt"
+        6 : "Right Hand"
+        7 : "Left Hand"
+        8 : "Right Wrist"
+        9 : "Left Wrist"
+        10 : "Shield"
+        11 : "Right Forearm"
+        12 : "Left Forearm"
+        13 : "Right Upper Arm"
+        14 : "Left Upper Arm"
+        15 : "Right Foot"
+        16 : "Left Foot"
+        17 : "Right Ankle"
+        18 : "Left Ankle"
+        19 : "Right Knee"
+        20 : "Left Knee"
+        21 : "Right Upper Leg"
+        22 : "Left Upper Leg"
+        23 : "Right Pauldron"
+        24 : "Left Pauldron"
+        25 : "Weapon"
+        26 : "Tail"
+    ]
+    male_part6(String) : "Mesh used for male body, slot 6"
+    female_part6(String) : "Mesh used for female body, slot 6"
+]
+
+@BaseClass = BipedObject7 : "Body Part 7"
+[
+    SlotType7(choices): "Slot Used" : 0 =
+    [
+        0 : "Head"
+        1 : "Hair"
+        2 : "Neck"
+        3 : "Chest"
+        4 : "Groin"
+        5 : "Skirt"
+        6 : "Right Hand"
+        7 : "Left Hand"
+        8 : "Right Wrist"
+        9 : "Left Wrist"
+        10 : "Shield"
+        11 : "Right Forearm"
+        12 : "Left Forearm"
+        13 : "Right Upper Arm"
+        14 : "Left Upper Arm"
+        15 : "Right Foot"
+        16 : "Left Foot"
+        17 : "Right Ankle"
+        18 : "Left Ankle"
+        19 : "Right Knee"
+        20 : "Left Knee"
+        21 : "Right Upper Leg"
+        22 : "Left Upper Leg"
+        23 : "Right Pauldron"
+        24 : "Left Pauldron"
+        25 : "Weapon"
+        26 : "Tail"
+    ]
+    male_part7(String) : "Mesh used for male body, slot 7"
+    female_part7(String) : "Mesh used for female body, slot 7"
+]
+
+@BaseClass = BipedObject8 : "Body Part 8"
+[
+    SlotType8(choices): "Slot Used" : 0 =
+    [
+        0 : "Head"
+        1 : "Hair"
+        2 : "Neck"
+        3 : "Chest"
+        4 : "Groin"
+        5 : "Skirt"
+        6 : "Right Hand"
+        7 : "Left Hand"
+        8 : "Right Wrist"
+        9 : "Left Wrist"
+        10 : "Shield"
+        11 : "Right Forearm"
+        12 : "Left Forearm"
+        13 : "Right Upper Arm"
+        14 : "Left Upper Arm"
+        15 : "Right Foot"
+        16 : "Left Foot"
+        17 : "Right Ankle"
+        18 : "Left Ankle"
+        19 : "Right Knee"
+        20 : "Left Knee"
+        21 : "Right Upper Leg"
+        22 : "Left Upper Leg"
+        23 : "Right Pauldron"
+        24 : "Left Pauldron"
+        25 : "Weapon"
+        26 : "Tail"
+    ]
+    male_part8(String) : "Mesh used for male body, slot 8"
+    female_part8(String) : "Mesh used for female body, slot 8"
+]
+
+@BaseClass base(BipedObject1, BipedObject2, BipedObject3, BipedObject4, BipedObject5, BipedObject6, BipedObject7, BipedObject8) = BodyParts : "Body Part Set" []
+// end clothing/armor hack
+
+// End common classes
+
+// Begin Armor-specific classes
+@BaseClass = ArmorType : "ArmorType"
+[
+    ArmorType(choices) : "Armor Type" : 0 =
+    [
+        0 : "Helmet"
+        1 : "Cuirass"
+        2 : "Left Pauldron"
+        3 : "Right Pauldron"
+        4 : "Greaves"
+        5 : "Boots"
+        6 : "Left Gauntlet"
+        7 : "Right Gauntlet"
+        8 : "Shield"
+        9 : "Left Bracer"
+        10 : "Right Bracer"
+    ]
+]
+
+@BaseClass base(ArmorType) = ArmorData : "Armor Data"
+[
+    Health(int): "Total armor durability" : 0
+    ArmorRating(int): "Total defensive capability of this armor" : 0
+]
+
+// End armor-specific classes
+
+// Since lights can be carryable or not, we use this
+// So that it can be a brush or point class
+@BaseClass = LightData : "Light Data"
+[
+    Sound(string) : "Internal SoundID played by this light. Can only be determined through a Morrowind Construction set."
+    Time(int) : "Amount of time the light will last before fading. A value of zero indicates the light does not expire."
+    Radius(int) : "Radius of the light"
+    color255(color) : "Light Color"
+    Transparency(int) : "Light transparency, up to 255."
+    LightFlags(Flags) =
+    	[
+	    	1 : "Dynamic" : 0
+            2 : "Carryable" : 0
+            4 : "Negative" : 0
+		    8 : "Flicker" : 0
+		    16 : "Fire" : 0
+		    32 : "OffByDefault" : 0
+		    64 : "FlickerSLOW" : 0
+		    128 : "Pulse" : 0
+		    256 : "PulseSlow" : 0
+        ]
+]
+
 // Actual object types follow this point
-@SolidClass base(baseObject) = ACTIVATOR: "Base Activator Entity"
+@SolidClass base(baseObject) = world_Activator: "Base Activator Entity"
 [
     Script(string) : "Id of the script used by the object. Optional. Be warned that all instances of this refId will share the script." : "fallingScript"
 ]
 
-@SolidClass base(Referenceable) = BOOK : "Base Book Entity"
+@SolidClass base(ArmorData, BodyParts, Referenceable) = item_Armor : "Base Armor Entity" []
+
+@SolidClass base(Referenceable) = item_Book : "Base Book Entity"
 [
 
     BookType(choices) : "Book Type" : 0 =
@@ -75,24 +424,6 @@
     
 ]
 
-@SolidClass base(Referenceable) = LIGHT : "Brush Light"
-[
-    Sound(string) : "Internal SoundID played by this light. Can only be determined through a Morrowind Construction set."
-    Time(int) : "Amount of time the light will last before fading. A value of zero indicates the light does not expire."
-    Radius(int) : "Radius of the light"
-    color255(color) : "Light Color"
-    Transparency(int) : "Light transparency, up to 255."
 
-    LightFlags(Flags) =
-    	[
-	    	1 : "Dynamic" : 0
-            2 : "Carryable" : 0
-            4 : "Negative" : 0
-		    8 : "Flicker" : 0
-		    16 : "Fire" : 0
-		    32 : "OffByDefault" : 0
-		    64 : "FlickerSLOW" : 0
-		    128 : "Pulse" : 0
-		    256 : "PulseSlow" : 0
-        ]
-]
+@SolidClass base(Referenceable, LightData) = item_Light : "Brush Light" []
+@PointClass base(baseObject, LightData) = world_Light: "Point Light" [] // No point entities are implemented yet
