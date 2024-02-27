@@ -1,11 +1,8 @@
 use std::{cmp::min, collections::HashMap, fs, path::Path};
 
-use clap::{Arg, ArgAction, Command};
+use clap::{Arg, Command};
 use shambler::Vector3 as SV3;
-use tes3::{
-    esp::{self, EditorId, Header, ObjectFlags, Plugin},
-    nif::NiTriShapeData,
-};
+use tes3::esp::{self, EditorId, Plugin};
 
 mod brush_ni_node;
 use brush_ni_node::BrushNiNode;
@@ -46,7 +43,6 @@ fn main() {
     // Default plugin name is just the name of the map, but esp instead.
     let map_id = &map_name[..map_name.len() - 4].to_string();
 
-    // println!("Map ID is: {workdir}/{map_dir}.esp");
     let plugin_str = format!("{workdir}/{map_dir}.esp");
 
     let plugin_name = match args.get_one::<String>("PLUGIN_NAME") {
@@ -218,8 +214,7 @@ fn main() {
         // Also we should probably just not check this way *only* and
         // also destroy matching objects once the refId has been determined.
         if !plugin.objects.contains(&mesh.game_object) {
-            println!("Saving base object definition for {ref_id} to plugin");
-            mesh.align_to_center();
+            println!("Saving base object definition & mesh for {ref_id} to plugin");
             mesh.save(&format!("{}/Meshes/{}", workdir, mesh_name));
             plugin.objects.push(mesh.game_object.clone());
         }
