@@ -179,6 +179,9 @@ fn main() {
         // We create the base record for the objects here.
         match prop_map.get(&"classname".to_string()) {
             Some(classname) => match classname.as_str() {
+                "ACTIVATOR" => {
+                    mesh.game_object = game_object::activator(&prop_map, &ref_id, &mesh_name);
+                }
                 "BOOK" => {
                     mesh.game_object = game_object::book(&prop_map, &ref_id, &mesh_name);
                 }

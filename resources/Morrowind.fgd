@@ -25,6 +25,12 @@
     EnchantmentPoints(int): "Strength of possible enchantments applied to this particular item." : "60"
 ]
 
+// Actual object types follow this point
+@SolidClass base(baseObject) = ACTIVATOR: "Base Activator Entity"
+[
+    Script(string) : "Id of the script used by the object. Optional. Be warned that all instances of this refId will share the script." : "fallingScript"
+]
+
 @SolidClass base(Referenceable) = BOOK : "Base Book Entity"
 [
 

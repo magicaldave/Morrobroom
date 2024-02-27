@@ -1,8 +1,23 @@
 use crate::surfaces;
 use std::collections::HashMap;
 use tes3::esp::{
-    Book, BookData, BookType, Light, LightData, LightFlags, ObjectFlags, SkillId, TES3Object,
+    Activator, Book, BookData, BookType, Light, LightData, LightFlags, ObjectFlags, SkillId,
+    TES3Object,
 };
+
+pub fn activator(
+    entity_props: &HashMap<&String, &String>,
+    ref_id: &str,
+    mesh_name: &str,
+) -> TES3Object {
+    TES3Object::Activator(Activator {
+        id: ref_id.to_owned(),
+        name: get_prop("Name", entity_props),
+        script: get_prop("Script", entity_props),
+        mesh: mesh_name.to_owned(),
+        ..Default::default()
+    })
+}
 
 pub fn book(entity_props: &HashMap<&String, &String>, ref_id: &str, mesh_name: &str) -> TES3Object {
     TES3Object::Book(Book {
