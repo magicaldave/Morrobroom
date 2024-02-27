@@ -56,8 +56,35 @@ impl Mesh {
         mesh
     }
 
+    pub fn align_to_center(&mut self) {
+        let center = Mesh::find_geometric_center(&self.node_distances);
+        for tri_shape in self.stream.objects_of_type_mut::<NiTriShapeData>() {
+            for vert in &mut tri_shape.vertices {
+                vert.x -= center.x;
+                vert.y -= center.y;
+                vert.z -= center.z;
+                println!("{0:?}", vert);
+            }
+        }
+
+        for vert in &mut self.node_distances {
+            vert.x -= center.x;
+            vert.y -= center.y;
+            vert.z -= center.z;
+        }
+    }
+
     pub fn save(&mut self, name: &String) {
+        self.align_to_center();
         let _ = self.stream.save_path(name);
+    }
+
+    pub fn find_geometric_center(vertices: &Vec<SV3>) -> SV3 {
+        // Calculate the sum of all dimensions using fold
+        vertices
+            .iter()
+            .fold(SV3::default(), |acc, v| acc + *v)
+            .scale(1.0 / vertices.len() as f32)
     }
 
     pub fn attach_node(&mut self, node: BrushNiNode) {
