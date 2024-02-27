@@ -16,6 +16,7 @@
     Icon(string) : "Ingame icon used by the object. Visible within TrenchBroom. Be sure to include the relative path to the icon." : "tx_goldicon.tga"
     Value(int) : "Gold Value of the object ingame" : 420
     Weight(float): "Weight of the object in Todd units." : "0.0"
+    Mangle(string): "Object rotation, not meant to be adjusted in the property view"
 ]
 
 @BaseClass base(Referenceable) = Wearable : "Wearable"

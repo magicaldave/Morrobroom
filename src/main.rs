@@ -209,6 +209,10 @@ fn main() {
 
         let mut mesh_distance: SV3 = find_geometric_center(&mesh.node_distances) * 2.0;
         mesh.final_distance = mesh_distance;
+        mesh.mangle = match get_prop("mangle", &prop_map) {
+            s if s.is_empty() => *get_rotation(&"0 0 0".to_string()),
+            mangle => *get_rotation(&mangle),
+        };
 
         // Also use linked groups to determine if the mesh & base def should be ignored
         // Also we should probably just not check this way *only* and
@@ -224,6 +228,7 @@ fn main() {
             mast_index: 0 as u32,
             refr_index: indices,
             translation: [mesh_distance.x, mesh_distance.y, mesh_distance.z],
+            rotation: [-mesh.mangle[0], -mesh.mangle[1], -mesh.mangle[2]],
             ..Default::default()
         };
 
@@ -245,17 +250,15 @@ fn main() {
     println!("Wrote {plugin_name} to disk successfully.");
 }
 
-fn split_string_into_array(color_str: &String, alpha_str: &String) -> [u8; 4] {
-    let mut array = [0; 4];
-    let colors: Vec<&str> = color_str.split_whitespace().collect();
+fn get_rotation(str: &String) -> Box<[f32; 3]> {
+    let rot: Vec<&str> = str.split_whitespace().collect();
+    let mut array = [0.0f32; 3];
 
-    for (index, color) in colors.iter().enumerate() {
-        array[index] = color.parse::<u8>().unwrap_or_default();
+    for (index, axis) in rot.iter().enumerate() {
+        array[index] = axis.parse::<f32>().unwrap_or_default().to_radians();
     }
 
-    array[3] = alpha_str.parse::<u8>().unwrap_or_default();
-
-    array
+    Box::new([array[2], array[0], array[1]])
 }
 
 fn find_geometric_center(vertices: &Vec<SV3>) -> SV3 {

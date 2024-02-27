@@ -1,3 +1,4 @@
+use nalgebra::{Rotation3, Vector3};
 use openmw_cfg::{find_file, get_config};
 use shambler::{brush::BrushId, Vector3 as SV3};
 use tes3::{
@@ -14,6 +15,7 @@ pub struct Mesh {
     pub stream: NiStream,
     pub base_index: NiLink<NiNode>,
     pub final_distance: SV3,
+    pub mangle: [f32; 3],
     collision_index: NiLink<RootCollisionNode>,
     root_index: NiLink<NiNode>,
 }
@@ -40,6 +42,7 @@ impl Mesh {
             game_object: esp::TES3Object::Static(esp::Static::default()),
             node_distances: Vec::new(),
             final_distance: SV3::default(),
+            mangle: [0.0, 0.0, 0.0],
         }
     }
 
@@ -58,12 +61,20 @@ impl Mesh {
 
     pub fn align_to_center(&mut self) {
         let center = Mesh::find_geometric_center(&self.node_distances);
+        let rotation = Rotation3::new(Vector3::new(
+            -self.mangle[0],
+            -self.mangle[1],
+            -self.mangle[2],
+        ));
         for tri_shape in self.stream.objects_of_type_mut::<NiTriShapeData>() {
             for vert in &mut tri_shape.vertices {
                 vert.x -= center.x;
                 vert.y -= center.y;
                 vert.z -= center.z;
-                println!("{0:?}", vert);
+                let rotated_vert = rotation.transform_vector(&Vector3::new(vert.x, vert.y, vert.z));
+                vert.x = rotated_vert[0];
+                vert.y = rotated_vert[1];
+                vert.z = rotated_vert[2];
             }
         }
 
@@ -71,6 +82,10 @@ impl Mesh {
             vert.x -= center.x;
             vert.y -= center.y;
             vert.z -= center.z;
+            let rotated_vert = rotation.transform_vector(&Vector3::new(vert.x, vert.y, vert.z));
+            vert.x = rotated_vert[0];
+            vert.y = rotated_vert[1];
+            vert.z = rotated_vert[2];
         }
     }
 
