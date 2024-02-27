@@ -13,6 +13,7 @@ mod map_data;
 use map_data::MapData;
 mod mesh;
 use mesh::Mesh;
+mod game_object;
 mod surfaces;
 
 #[global_allocator]
