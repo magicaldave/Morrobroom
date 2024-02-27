@@ -72,7 +72,7 @@ pub fn light(
                     .unwrap_or_default(),
             )
             .expect("This cannot fail"), // Famous last words
-            color: split_string_into_array(
+            color: get_color(
                 &get_prop("color", entity_props),
                 &get_prop("Transparency", entity_props),
             ),
@@ -87,7 +87,7 @@ fn get_prop(prop_name: &str, prop_map: &HashMap<&String, &String>) -> String {
         .to_string()
 }
 
-fn split_string_into_array(color_str: &String, alpha_str: &String) -> [u8; 4] {
+fn get_color(color_str: &String, alpha_str: &String) -> [u8; 4] {
     let mut array = [0; 4];
     let colors: Vec<&str> = color_str.split_whitespace().collect();
 
