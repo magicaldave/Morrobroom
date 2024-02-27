@@ -2,18 +2,19 @@ use openmw_cfg::{find_file, get_config};
 use shambler::{brush::BrushId, Vector3 as SV3};
 use tes3::{
     esp,
-    nif::{self, NiLink, NiMaterialProperty, NiNode, NiStream, RootCollisionNode},
+    nif::{self, NiLink, NiMaterialProperty, NiNode, NiStream, NiTriShapeData, RootCollisionNode},
 };
 
 use crate::{surfaces, BrushNiNode, MapData};
 
+#[derive(Clone)]
 pub struct Mesh {
     pub game_object: esp::TES3Object,
     pub node_distances: Vec<SV3>,
     pub stream: NiStream,
     pub base_index: NiLink<NiNode>,
+    pub final_distance: SV3,
     collision_index: NiLink<RootCollisionNode>,
-    final_distance: SV3,
     root_index: NiLink<NiNode>,
 }
 
