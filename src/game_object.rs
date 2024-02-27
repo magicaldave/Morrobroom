@@ -32,8 +32,13 @@ pub fn armor(
         mesh: mesh_name.to_owned(),
         icon: get_prop("Icon", entity_props),
         enchanting: get_prop("Enchantment", entity_props),
+        biped_objects: collect_biped_objects(entity_props),
         data: ArmorData {
-            armor_type: get_prop("ArmorType", entity_props),
+            armor_type: get_prop("ArmorType", entity_props)
+                .parse::<u32>()
+                .unwrap_or_default()
+                .try_into()
+                .expect("Invalid Armor Type!"),
             armor_rating: get_prop("ArmorRating", entity_props)
                 .parse::<u32>()
                 .unwrap_or_default(),
@@ -53,13 +58,17 @@ pub fn armor(
     })
 }
 
-fn collect_biped_objects(prop_map: &HashMap<&String, &String>) -> Vec<String> {
+fn collect_biped_objects(prop_map: &HashMap<&String, &String>) -> Vec<BipedObject> {
     let mut biped_objects = Vec::new();
 
     for count in 1..8 {
         match prop_map.get(&format!("SlotType{count}")) {
             Some(biped_object) => biped_objects.push(BipedObject {
-                biped_object_type: biped_object,
+                biped_object_type: biped_object
+                    .parse::<u8>()
+                    .unwrap_or_default()
+                    .try_into()
+                    .expect("Invalid Biped Object Type!"),
                 male_bodypart: prop_map
                     .get(&format!("male_part{count}"))
                     .unwrap_or(&&String::default())
