@@ -1,8 +1,13 @@
-use std::{cmp::min, collections::HashMap, fs, path::Path};
+use std::{
+    cmp::min,
+    collections::{HashMap, HashSet},
+    fs,
+    path::Path,
+};
 
 use clap::{Arg, Command};
 use shambler::Vector3 as SV3;
-use tes3::esp::{self, EditorId, Plugin};
+use tes3::esp::{self, Cell, EditorId, Plugin};
 
 mod brush_ni_node;
 use brush_ni_node::BrushNiNode;
@@ -56,36 +61,19 @@ fn main() {
 
     // Push the cell record to the plugin
     // It can't be done multiple times :/
-    let mut cell = match plugin
-        .objects_of_type_mut::<esp::Cell>()
-        .find(|obj| obj.name == map_dir)
-    {
-        Some(cell) => {
-            cell.references.clear();
-            cell.to_owned()
-        }
-        None => esp::Cell::default(),
-    };
-
-    cell.data.flags = esp::CellFlags::IS_INTERIOR;
-    cell.name = map_dir.clone();
-
-    cell.atmosphere_data = Some(esp::AtmosphereData {
-        ambient_color: [15, 15, 15, 75],
-        fog_density: 1. as f32,
-        sunlight_color: [15, 15, 15, 75],
-        fog_color: [15, 15, 15, 75],
-    });
-
-    // println!("MW_Dir is: {mw_dir}");
-
-    // println!("Workdir is: {workdir}");
+    let mut cell = None;
+    let mut created_objects = Vec::new();
+    let mut meshes: HashMap<String, Mesh> = HashMap::new();
+    let mut processed_base_objects: HashSet<String> = HashSet::new();
 
     let map_data = MapData::new(map_name);
-    let mut processed_base_objects: HashMap<String, String> = HashMap::new();
-    let mut meshes: HashMap<String, Mesh> = HashMap::new();
 
     let mut indices: u32 = 0;
+
+    assert!(
+        map_data.geomap.entity_brushes.len() > 0,
+        "No brushes found in map! You probably used an apostrophe in worldspawn properties."
+    );
 
     for (entity_id, brushes) in map_data.geomap.entity_brushes.iter() {
         let prop_map = map_data.get_entity_properties(entity_id);
@@ -94,9 +82,7 @@ fn main() {
 
         match prop_map.get(&"_tb_id".to_string()) {
             Some(group_id) => {
-                println!(
-                    "This object is a group! Finding all non-group children for group {group_id}"
-                );
+                // This object is a group
                 let mut ref_instances = 0;
                 let mut nodes = Vec::new();
                 let mut processed_group_objects: Vec<String> = Vec::new();
@@ -131,10 +117,9 @@ fn main() {
                                 println!("We don't have full refId support yet, but this object {ref_id} has appeared in this group {ref_instances} times"); // In theory by this point, we should have a mesh for this object already.
                                                                                                                                                              // Alternatively, we have to generate it here, which is probably going to be likely.
                                 continue; // If it does exist, though, we need to simply derive its placement
-                            } else {
-                                println!("Adding {ref_id} to unique group set. This should actually not be generated as part of the mesh, but rather create a new one for this unique object. Then it should be placed in the ESP file and referred to later.");
-                                processed_group_objects.push(ref_id.to_string());
                             }
+                            println!("Adding {ref_id} to unique group set. This should actually not be generated as part of the mesh, but rather create a new one for this unique object. Then it should be placed in the ESP file and referred to later.");
+                            processed_group_objects.push(ref_id.to_string());
                         }
                         None => {} // object has no refid, and it's not a group, but it is a member of a group. This maybe shouldn't happen
                     }
@@ -151,30 +136,21 @@ fn main() {
 
         let ref_id = match prop_map.get(&"RefId".to_string()) {
             Some(ref_id) => {
-                if processed_base_objects.contains_key(&ref_id.to_string()) {
-                    // Not sure what to do here.
-                    // In this case, the object has already had a mesh generated.
-                    // But, we need to collect its vertices to know what position to provide it.
-                    // Maybe we should just have a specific function or behavior that only gets the vertices here.
-                    // Starting to get ugly.
-                    // continue;
-                    println!("Already processed {ref_id} mesh, it should only have a cellRef and not a new mesh.");
+                if processed_base_objects.contains(&ref_id.to_string()) {
+                    println!("Placing new instance of {ref_id} as ref {indices}");
                 } else {
-                    println!("Adding {ref_id} to unique set");
-                    // processed_base_objects.push(ref_id.to_string());
+                    processed_base_objects.insert(ref_id.to_string());
                 }
                 ref_id[..min(ref_id.len(), 32)].to_string()
             }
             None => {
+                // The only entity that ever has this happen should be worldspawn
                 let ref_id = format!("{map_dir}-scene-{entity_id}");
                 ref_id[..min(ref_id.len(), 32)].to_string()
-                // println!("This object has no refid, and isn't part of a group. It may be the worldspawn?");
             }
         };
 
         let mesh_name = format!("{}/{}.nif", map_dir, ref_id);
-
-        println!("Saving mesh as {mesh_name}");
 
         // We create the base record for the objects here.
         match prop_map.get(&"classname".to_string()) {
@@ -182,72 +158,108 @@ fn main() {
                 "world_Activator" => {
                     mesh.game_object = game_object::activator(&prop_map, &ref_id, &mesh_name);
                 }
+                "item_Alchemy" => {
+                    mesh.game_object = game_object::potion(&prop_map, &ref_id, &mesh_name);
+                }
+                "item_Apparatus" => {
+                    mesh.game_object = game_object::apparatus(&prop_map, &ref_id, &mesh_name);
+                }
+                "item_Armor" => {
+                    mesh.game_object = game_object::armor(&prop_map, &ref_id, &mesh_name);
+                }
                 "item_Book" => {
                     mesh.game_object = game_object::book(&prop_map, &ref_id, &mesh_name);
+                }
+                "item_Ingredient" => {
+                    mesh.game_object = game_object::ingredient(&prop_map, &ref_id, &mesh_name);
                 }
                 "item_Light" => {
                     // Keep in mind this is for lights made from brushes. We also need to support point lights, so that they don't necessarily have to be associated with an object.
                     mesh.game_object = game_object::light(&prop_map, &ref_id, &mesh_name);
                 }
-                "item_Armor" => {
-                    mesh.game_object = game_object::armor(&prop_map, &ref_id, &mesh_name);
+                "worldspawn" => {
+                    let mut local_cell = game_object::cell(&prop_map, &ref_id);
+                    if local_cell.name.is_empty() {
+                        local_cell.name = map_dir.clone();
+                    }
+                    processed_base_objects.insert(local_cell.name.clone());
+                    processed_base_objects.insert(ref_id.clone());
+                    cell = Some(local_cell);
+                    mesh.game_object = esp::TES3Object::Static(tes3::esp::Static {
+                        id: ref_id.to_owned(),
+                        mesh: mesh_name.to_owned(),
+                        flags: esp::ObjectFlags::default(),
+                    });
                 }
-                _ => {
-                    println!(
-                        "No matching object type found! {classname} requested for {entity_id}"
-                    );
+                "func_group" => {
+                    processed_base_objects.insert(ref_id.clone());
                     mesh.game_object = esp::TES3Object::Static(tes3::esp::Static {
                         id: ref_id.to_owned(),
                         mesh: mesh_name.to_owned(),
                         ..Default::default()
                     })
+                }
+                _ => {
+                    println!(
+                        "No matching object type found! {classname} requested for {entity_id}"
+                    );
+                    continue;
                 } // Object has a class, but we don't know what it was.
             },
-            None => {
-                println!("No classname found for object! Requested for {entity_id}");
-                mesh.game_object = esp::TES3Object::Static(tes3::esp::Static {
-                    id: ref_id.to_owned(),
-                    mesh: mesh_name.to_owned(),
-                    ..Default::default()
-                })
-            } // object has no refid, and it's not a group, but it is a member of a group. This maybe shouldn't happen
+            None => {}
         }
 
         let mut mesh_distance: SV3 = find_geometric_center(&mesh.node_distances) * 2.0;
         mesh.final_distance = mesh_distance;
         mesh.mangle = match get_prop("mangle", &prop_map) {
-            s if s.is_empty() => *get_rotation(&"0 0 0".to_string()),
+            mangle if mangle.is_empty() => *get_rotation(&"0 0 0".to_string()),
             mangle => *get_rotation(&mangle),
         };
 
         // Also use linked groups to determine if the mesh & base def should be ignored
         // Also we should probably just not check this way *only* and
         // also destroy matching objects once the refId has been determined.
-        if !plugin.objects.contains(&mesh.game_object) {
+        if !created_objects.contains(&mesh.game_object) {
             println!("Saving base object definition & mesh for {ref_id} to plugin");
             mesh.save(&format!("{}/Meshes/{}", workdir, mesh_name));
-            plugin.objects.push(mesh.game_object.clone());
+            created_objects.push(mesh.game_object.clone());
         }
 
-        let new_cellref = esp::Reference {
-            id: ref_id.to_owned(),
-            mast_index: 0 as u32,
-            refr_index: indices,
-            translation: [mesh_distance.x, mesh_distance.y, mesh_distance.z],
-            rotation: [-mesh.mangle[0], -mesh.mangle[1], -mesh.mangle[2]],
-            ..Default::default()
-        };
+        if let Some(ref mut local_cell) = cell {
+            local_cell.references.insert(
+                (0 as u32, indices),
+                esp::Reference {
+                    id: ref_id.to_owned(),
+                    mast_index: 0 as u32,
+                    refr_index: indices,
+                    translation: [mesh_distance.x, mesh_distance.y, mesh_distance.z],
+                    rotation: [-mesh.mangle[0], -mesh.mangle[1], -mesh.mangle[2]],
+                    ..Default::default()
+                },
+            );
 
-        cell.references.insert((0 as u32, indices), new_cellref);
+            indices += 1;
+        }
 
-        println!("{mesh_name} added to HashSet");
-        meshes.insert(mesh_name, mesh);
+        // match cell {
+        //     Some(mut cell) => {}
+        //     None => {}
+        // }
 
-        indices += 1;
+        // println!("{mesh_name} added to HashSet");
+        // meshes.insert(mesh_name, mesh);
     }
 
-    plugin.objects.retain(|obj| obj.editor_id() != cell.name);
-    plugin.objects.push(esp::TES3Object::Cell(cell));
+    if let Some(cell) = cell {
+        created_objects.push(esp::TES3Object::Cell(cell));
+    }
+
+    plugin
+        .objects
+        .retain(|obj| !processed_base_objects.contains(&obj.editor_id().to_string()));
+    // plugin.objects.retain(|obj| !created_objects.contains(obj));
+    plugin.objects.extend(created_objects);
+    // plugin.objects.push(esp::TES3Object::Cell(cell));
     plugin.sort_objects();
     plugin
         .save_path(plugin_name)
@@ -279,7 +291,6 @@ fn find_geometric_center(vertices: &Vec<SV3>) -> SV3 {
     let center_y = sum_y / num_vertices;
     let center_z = sum_z / num_vertices;
 
-    println!("Object center is {center_x}, {center_y}, {center_z}");
     // Return the geometric center as a new Vertex
     SV3::new(center_x, center_y, center_z)
 }
