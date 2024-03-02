@@ -240,14 +240,6 @@ fn main() {
 
             indices += 1;
         }
-
-        // match cell {
-        //     Some(mut cell) => {}
-        //     None => {}
-        // }
-
-        // println!("{mesh_name} added to HashSet");
-        // meshes.insert(mesh_name, mesh);
     }
 
     if let Some(cell) = cell {
@@ -257,9 +249,7 @@ fn main() {
     plugin
         .objects
         .retain(|obj| !processed_base_objects.contains(&obj.editor_id().to_string()));
-    // plugin.objects.retain(|obj| !created_objects.contains(obj));
     plugin.objects.extend(created_objects);
-    // plugin.objects.push(esp::TES3Object::Cell(cell));
     plugin.sort_objects();
     plugin
         .save_path(plugin_name)
@@ -341,7 +331,7 @@ fn create_workdir(map_name: &String) -> (String, String) {
         .rfind('.')
         .expect("Map should always have an extension, this is probably a directory");
 
-    let workdir = &map_name[..dir_index - 3];
+    let workdir = &map_name[..dir_index];
     let map_dir = &map_name[dir_index + 1..ext_index];
 
     if !fs::metadata(format!("{workdir}")).is_ok() {
