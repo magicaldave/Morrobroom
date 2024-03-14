@@ -150,20 +150,19 @@ fn main() {
         }
 
         let ref_id = match prop_map.get(&"RefId".to_string()) {
-            Some(ref_id) => {
-                if processed_base_objects.contains(&ref_id.to_string()) {
-                    println!("Placing new instance of {ref_id} as ref {indices}");
-                } else {
-                    processed_base_objects.insert(ref_id.to_string());
-                }
-                ref_id[..min(ref_id.len(), 32)].to_string()
-            }
+            Some(ref_id) => ref_id[..min(ref_id.len(), 32)].to_string(),
             None => {
                 // The only entity that ever has this happen should be worldspawn
                 let ref_id = format!("{map_dir}-scene-{entity_id}");
                 ref_id[..min(ref_id.len(), 32)].to_string()
             }
         };
+
+        if processed_base_objects.contains(&ref_id.to_string()) {
+            println!("Placing new instance of {ref_id} as ref {indices}");
+        } else {
+            processed_base_objects.insert(ref_id.to_string());
+        }
 
         let mesh_name = format!("{}/{}.nif", map_dir, ref_id);
 
