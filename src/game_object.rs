@@ -137,17 +137,6 @@ pub fn cell(entity_props: &HashMap<&String, &String>, ref_id: &str) -> Cell {
         flags |= CellFlags::RESTING_IS_ILLEGAL
     };
 
-    println!(
-        "Fog density is: {}",
-        nalgebra::clamp(
-            get_prop("FogDensity", entity_props)
-                .parse::<f32>()
-                .unwrap_or_default(),
-            0.0,
-            1.0
-        )
-    );
-
     Cell {
         flags: ObjectFlags::default(),
         name: get_prop("Name", entity_props),
@@ -265,7 +254,7 @@ pub fn light(
                     .unwrap_or_default(),
             )
             .expect("This cannot fail"), // Famous last words
-            color: get_color(&get_prop("color", entity_props)),
+            color: get_color(&get_prop("light_color", entity_props)),
         },
     })
 }

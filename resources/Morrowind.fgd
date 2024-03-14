@@ -1947,8 +1947,7 @@
     Sound(string) : "Internal SoundID played by this light. Can only be determined through a Morrowind Construction set."
     Time(int) : "Amount of time the light will last before fading. A value of zero indicates the light does not expire."
     Radius(int) : "Radius of the light"
-    color255(color) : "Light Color"
-    Transparency(int) : "Light transparency, up to 255."
+    light_color(color) : "Light Color"
     LightFlags(Flags) =
     	[
 	    	1 : "Dynamic" : 0
