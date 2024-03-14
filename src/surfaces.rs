@@ -1,4 +1,7 @@
-pub const MAP_SCALE: f32 = 2.;
+pub mod ScaleMode {
+    pub const Morrowind: f32 = 1.0;
+    pub const LibreQuake: f32 = 2.0;
+}
 
 pub const BOOK_START_DEFAULT: &str =
     "<DIV ALIGN=\"LEFT\"><FONT COLOR=\"000000\" SIZE=\"3\" FACE=\"Magic Cards\"><BR>";

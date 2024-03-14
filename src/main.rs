@@ -50,6 +50,12 @@ fn main() {
 
     let mw_dir = args.get_one::<String>("MW_DIR").unwrap();
     let map_name = args.get_one::<String>("MAP_NAME").unwrap();
+    let default_mode = String::from("openmw");
+    let mode = args.get_one::<String>("MODE").unwrap_or(&default_mode);
+    let scale_mode = match mode.as_str() {
+        "librequake" => surfaces::ScaleMode::LibreQuake,
+        _ => surfaces::ScaleMode::Morrowind,
+    };
     let (workdir, map_dir) = create_workdir(&map_name);
 
     // Default plugin name is just the name of the map, but esp instead.
@@ -93,7 +99,7 @@ fn main() {
     for (entity_id, brushes) in map_data.geomap.entity_brushes.iter() {
         let prop_map = map_data.get_entity_properties(entity_id);
 
-        let mut mesh = Mesh::from_map(brushes, &map_data);
+        let mut mesh = Mesh::from_map(brushes, &map_data, &scale_mode);
 
         match prop_map.get(&"_tb_id".to_string()) {
             Some(group_id) => {
@@ -223,7 +229,7 @@ fn main() {
             None => {}
         }
 
-        let mut mesh_distance: SV3 = find_geometric_center(&mesh.node_distances) * 2.0;
+        let mut mesh_distance: SV3 = find_geometric_center(&mesh.node_distances) * scale_mode;
         mesh.final_distance = mesh_distance;
         mesh.mangle = match get_prop("mangle", &prop_map) {
             mangle if mangle.is_empty() => *get_rotation(&"0 0 0".to_string()),

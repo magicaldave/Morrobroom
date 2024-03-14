@@ -21,13 +21,13 @@ pub struct Mesh {
 }
 
 impl Mesh {
-    fn new() -> Self {
+    fn new(scale_mode: &f32) -> Self {
         let mut stream = NiStream::default();
         let mut root_node = NiNode::default();
         let mut base_node = NiNode::default();
         let collision_index = stream.insert(RootCollisionNode::default());
         base_node.children.push(collision_index.cast());
-        base_node.scale = surfaces::MAP_SCALE; // Trenchbroom maps tend to be a bit small.
+        base_node.scale = *scale_mode;
         let base_index = stream.insert(base_node);
         root_node.children.push(base_index.cast());
         let root_index = stream.insert(root_node);
@@ -46,8 +46,8 @@ impl Mesh {
         }
     }
 
-    pub fn from_map(brushes: &Vec<BrushId>, map_data: &MapData) -> Mesh {
-        let mut mesh = Mesh::new();
+    pub fn from_map(brushes: &Vec<BrushId>, map_data: &MapData, scale_mode: &f32) -> Mesh {
+        let mut mesh = Mesh::new(scale_mode);
 
         for brush_id in brushes {
             let brush_nodes = BrushNiNode::from_brush(brush_id, map_data);
