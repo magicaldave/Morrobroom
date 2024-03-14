@@ -24,19 +24,26 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 fn main() {
     let args = Command::new("morrobroom")
         .about("Compile trenchbroom .map files into usable Morrowind mods.")
-    .override_usage("morrobroom \"Map_Name.map\" \"Path/To/Morrowind/Data Files/\"")
+    .override_usage("morrobroom \"Path/to/Map_Name.map\" \"Path/To/Morrowind/Data Files/\"")
     .arg_required_else_help(true)
     .args(&[
         Arg::new("MAP_NAME")
             .help("Input map file name.")
             .value_parser(validate_input_map)
+            .long("map")
             .required(true),
         Arg::new("MW_DIR")
             .help("Morrowind install directory. Due to trenchbroom behavior you should use manually created symlinks or junctions to achieve vfs-like functionality.")
             .value_parser(check_morrowind_directory)
+            .long("mw-dir")
             .required(true),
         Arg::new("PLUGIN_NAME")
             .help("Output plugin name. Can be a new or existing plugin.")
+            .long("out")
+            .value_parser(validate_input_plugin),
+        Arg::new("MODE")
+            .help("Whether to compile in openmw, morrowind.exe, or librequake mode.")
+            .long("mode")
             .value_parser(validate_input_plugin),
     ])
     .get_matches();
@@ -366,6 +373,17 @@ fn validate_plugin_extension(path: &Path) -> Result<(), String> {
         return Ok(());
     }
     Err(format!("\"{}\" is not a map file!.", path.display()))
+}
+
+fn validate_mode(arg: &str) -> Result<String, String> {
+    match arg {
+        "vanilla" => Ok(arg.into()),
+        "openmw" => Ok(arg.into()),
+        "librequake" => Ok(arg.into()),
+        "mw" => Ok(arg.into()),
+        "lq" => Ok(arg.into()),
+        _ => Err(format!("\"{}\" is not a valid mode.", arg)),
+    }
 }
 
 fn get_extension(path: &Path) -> String {
