@@ -77,6 +77,14 @@ fn main() {
 
     let mut indices: u32 = 0;
 
+    for cell in plugin.objects_of_type::<Cell>() {
+        for ((mast_idx, ref_idx), reference) in &cell.references {
+            if ref_idx > &indices {
+                indices = *ref_idx
+            }
+        }
+    }
+
     assert!(
         map_data.geomap.entity_brushes.len() > 0,
         "No brushes found in map! You probably used an apostrophe in worldspawn properties."
