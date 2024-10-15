@@ -158,7 +158,7 @@ impl Mesh {
 
         let mut extension = String::default();
 
-        for extension_candidate in ["dds", "tga"] {
+        for extension_candidate in ["png", "dds", "tga"] {
             let candidate_path = format!("Textures/{file_path}.{extension_candidate}");
             if let Ok(_) = find_file(&config, candidate_path.as_str()) {
                 extension = extension_candidate.to_string();
