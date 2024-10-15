@@ -44,7 +44,7 @@ fn main() {
         Arg::new("MODE")
             .help("Whether to compile in openmw, morrowind.exe, or librequake mode.")
             .long("mode")
-            .value_parser(validate_compile_mode),
+            .value_parser(validate_mode),
     ])
     .get_matches();
 
@@ -69,8 +69,6 @@ fn main() {
     };
 
     let mut plugin = esp::Plugin::from_path(plugin_name).unwrap_or(esp::Plugin::default());
-
-    create_header_if_missing(&mut plugin);
 
     // Push the cell record to the plugin
     // It can't be done multiple times :/
@@ -270,6 +268,7 @@ fn main() {
         .objects
         .retain(|obj| !processed_base_objects.contains(&obj.editor_id().to_string()));
     plugin.objects.extend(created_objects);
+    create_header_if_missing(&mut plugin);
     plugin.sort_objects();
     plugin
         .save_path(plugin_name)
@@ -343,13 +342,6 @@ fn validate_input_plugin(arg: &str) -> Result<String, String> {
         if !path.exists() {
             return Err(format!("\"{}\" (file does not exist).", path.display()));
         }
-    }
-    Ok(arg.into())
-}
-
-fn validate_compile_mode(arg: &str) -> Result<String, String> {
-    if arg != "-" && arg != "librequake" && arg != "morrowind.exe" && arg != "openmw" {
-        return Err(format!("\"{}\" invalid compile mode", arg));
     }
     Ok(arg.into())
 }
