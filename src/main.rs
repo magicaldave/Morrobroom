@@ -44,7 +44,7 @@ fn main() {
         Arg::new("MODE")
             .help("Whether to compile in openmw, morrowind.exe, or librequake mode.")
             .long("mode")
-            .value_parser(validate_input_plugin),
+            .value_parser(validate_compile_mode),
     ])
     .get_matches();
 
@@ -343,6 +343,13 @@ fn validate_input_plugin(arg: &str) -> Result<String, String> {
         if !path.exists() {
             return Err(format!("\"{}\" (file does not exist).", path.display()));
         }
+    }
+    Ok(arg.into())
+}
+
+fn validate_compile_mode(arg: &str) -> Result<String, String> {
+    if arg != "-" && arg != "librequake" && arg != "morrowind.exe" && arg != "openmw" {
+        return Err(format!("\"{}\" invalid compile mode", arg));
     }
     Ok(arg.into())
 }
