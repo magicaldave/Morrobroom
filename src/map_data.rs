@@ -84,10 +84,6 @@ impl MapData {
         let mut modified_textures: BTreeMap<TextureId, String> = BTreeMap::new();
 
         for (texture_id, texture_name) in geomap.textures.iter() {
-            if texture_name == "__TB_empty" || texture_name == "skip" || texture_name == "clip" {
-                continue;
-            }
-
             for texture_path in &texture_paths {
                 if texture_path
                     .to_ascii_lowercase()
@@ -133,10 +129,6 @@ impl MapData {
 
     pub fn find_vfs_texture(name: &str, config: &Ini) -> Option<String> {
         let extensions = ["dds", "tga", "png"];
-
-        if name == "__TB_empty" || name == "trigger" || name == "skip" || name == "clip" {
-            return None;
-        }
 
         Some(
             extensions
