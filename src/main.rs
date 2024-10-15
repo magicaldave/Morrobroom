@@ -316,7 +316,12 @@ fn create_header_if_missing(plugin: &mut Plugin) {
             // Later during serialization, we should make sure to include author and header info.
             plugin.objects.push(esp::TES3Object::Header(header));
         }
-        _ => {}
+        _ => {
+            println!(
+                "Plugin was found to already have {} header records",
+                plugin.objects_of_type::<esp::Header>().count()
+            )
+        }
     }
 }
 
