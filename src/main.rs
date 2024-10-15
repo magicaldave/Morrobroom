@@ -36,7 +36,7 @@ fn main() {
             .help("Morrowind install directory. Due to trenchbroom behavior you should use manually created symlinks or junctions to achieve vfs-like functionality.")
             .value_parser(check_morrowind_directory)
             .long("mw-dir")
-            .required(true),
+            .required(false),
         Arg::new("PLUGIN_NAME")
             .help("Output plugin name. Can be a new or existing plugin.")
             .long("out")
