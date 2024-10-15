@@ -129,12 +129,16 @@ pub fn book(entity_props: &HashMap<&String, &String>, ref_id: &str, mesh_name: &
 pub fn cell(entity_props: &HashMap<&String, &String>, ref_id: &str) -> Cell {
     let mut flags = CellFlags::default() | CellFlags::IS_INTERIOR;
 
+    if let Ok(_) = get_prop("FakeExterior", entity_props).parse::<u32>() {
+        flags |= CellFlags::BEHAVES_LIKE_EXTERIOR;
+    }
+
     if let Ok(_) = get_prop("HasWater", entity_props).parse::<u32>() {
-        flags |= CellFlags::HAS_WATER
-    } else if let Ok(_) = get_prop("FakeExterior", entity_props).parse::<u32>() {
-        flags |= CellFlags::BEHAVES_LIKE_EXTERIOR
-    } else if let Ok(_) = get_prop("RestIsIllegal", entity_props).parse::<u32>() {
-        flags |= CellFlags::RESTING_IS_ILLEGAL
+        flags |= CellFlags::HAS_WATER;
+    };
+
+    if let Ok(_) = get_prop("RestIsIllegal", entity_props).parse::<u32>() {
+        flags |= CellFlags::RESTING_IS_ILLEGAL;
     };
 
     Cell {
