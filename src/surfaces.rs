@@ -1,6 +1,6 @@
 pub mod ScaleMode {
     pub const Morrowind: f32 = 1.0;
-    pub const LibreQuake: f32 = 2.0;
+    pub const LibreQuake: f32 = 3.0;
 }
 
 pub const BOOK_START_DEFAULT: &str =
