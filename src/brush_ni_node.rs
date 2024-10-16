@@ -58,7 +58,7 @@ impl BrushNiNode {
             let texture_id = map_data.geomap.face_textures.get(face_id).unwrap();
             let texture_name = map_data.geomap.textures.get(texture_id).unwrap();
 
-            if texture_name == "skip" || texture_name.contains("skip") {
+            if texture_name == "skip" || texture_name.starts_with("skip_") {
                 continue;
             };
 
