@@ -102,7 +102,7 @@ impl Mesh {
 
     pub fn attach_node(&mut self, node: BrushNiNode) {
         // HACK: This only gets used if the vis data and collision data are equal, so is always initialized when used
-        let mut vis_outer = NiLink::default();
+        let mut vis_data_index = NiLink::default();
 
         if node.vis_verts.len() > 0 {
             self.node_distances.push(node.distance_from_origin);
@@ -115,9 +115,7 @@ impl Mesh {
                 self.assign_material(vis_index);
             }
 
-            let vis_data_index = self.stream.insert(node.vis_data);
-
-            vis_outer = vis_data_index;
+            vis_data_index = self.stream.insert(node.vis_data);
 
             if let Some(shape) = self.stream.get_mut(vis_index) {
                 shape.geometry_data = vis_data_index.cast();
@@ -133,7 +131,7 @@ impl Mesh {
 
             //HACK: We should probably implement equality traits instead of checking the length of the vertices, but it works
             let col_data_index = match node.col_verts.len() == node.vis_verts.len() {
-                true => vis_outer,
+                true => vis_data_index,
                 false => self.stream.insert(node.col_data),
             };
 
