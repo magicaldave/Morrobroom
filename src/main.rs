@@ -74,15 +74,20 @@ fn main() {
 
     let map_data = MapData::new(map_name);
 
-    let mut indices: u32 = 0;
-
-    for cell in plugin.objects_of_type::<Cell>() {
-        for ((_mast_idx, ref_idx), _reference) in &cell.references {
-            if ref_idx > &indices {
-                indices = *ref_idx
-            }
-        }
-    }
+    let mut used_indices: HashSet<u32> = plugin
+        .objects_of_type::<Cell>()
+        .flat_map(|cell| {
+            cell.references.iter().filter_map(
+                |((mast_idx, ref_idx), _reference)| {
+                    if *mast_idx == 0 {
+                        Some(*ref_idx)
+                    } else {
+                        None
+                    }
+                },
+            )
+        })
+        .collect();
 
     assert!(
         map_data.geomap.entity_brushes.len() > 0,
@@ -157,8 +162,10 @@ fn main() {
             }
         };
 
+        let lowest_available_index: u32 = (1..).find(|&n| !used_indices.contains(&n)).unwrap_or(1);
+
         if processed_base_objects.contains(&ref_id.to_string()) {
-            println!("Placing new instance of {ref_id} as ref {indices}");
+            println!("Placing new instance of {ref_id} as ref {lowest_available_index}");
         } else {
             processed_base_objects.insert(ref_id.to_string());
         }
@@ -241,18 +248,18 @@ fn main() {
 
         if let Some(ref mut local_cell) = cell {
             local_cell.references.insert(
-                (0 as u32, indices),
+                (0 as u32, lowest_available_index),
                 esp::Reference {
                     id: ref_id.to_owned(),
                     mast_index: 0 as u32,
-                    refr_index: indices,
+                    refr_index: lowest_available_index,
                     translation: [mesh_distance.x, mesh_distance.y, mesh_distance.z],
                     rotation: [-mesh.mangle[0], -mesh.mangle[1], -mesh.mangle[2]],
                     ..Default::default()
                 },
             );
 
-            indices += 1;
+            used_indices.insert(lowest_available_index);
         }
     }
 
