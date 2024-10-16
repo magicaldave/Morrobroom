@@ -309,28 +309,6 @@ fn create_header_if_missing(plugin: &mut Plugin) {
     }
 }
 
-fn validate_input_map(arg: &str) -> Result<String, String> {
-    if arg != "-" {
-        let path = arg.as_ref();
-        validate_map_extension(path)?;
-        if !path.exists() {
-            return Err(format!("\"{}\" (file does not exist).", path.display()));
-        }
-    }
-    Ok(arg.into())
-}
-
-fn validate_input_plugin(arg: &str) -> Result<String, String> {
-    if arg != "-" {
-        let path = arg.as_ref();
-        validate_plugin_extension(path)?;
-        if !path.exists() {
-            return Err(format!("\"{}\" (file does not exist).", path.display()));
-        }
-    }
-    Ok(arg.into())
-}
-
 fn create_workdir(map_name: &String) -> (String, String) {
     let dir_index = map_name
         .rfind('/')
@@ -361,6 +339,17 @@ fn create_workdir(map_name: &String) -> (String, String) {
     (workdir.to_string(), map_dir.to_string())
 }
 
+fn validate_input_map(arg: &str) -> Result<String, String> {
+    if arg != "-" {
+        let path = arg.as_ref();
+        validate_map_extension(path)?;
+        if !path.exists() {
+            return Err(format!("\"{}\" (file does not exist).", path.display()));
+        }
+    }
+    Ok(arg.into())
+}
+
 fn validate_map_extension(path: &Path) -> Result<(), String> {
     let ext = get_extension(path);
     if matches!(&*ext, "map") {
@@ -369,12 +358,26 @@ fn validate_map_extension(path: &Path) -> Result<(), String> {
     Err(format!("\"{}\" is not a map file!.", path.display()))
 }
 
+fn validate_input_plugin(arg: &str) -> Result<String, String> {
+    if arg != "-" {
+        let path = arg.as_ref();
+        validate_plugin_extension(path)?;
+        if !path.exists() {
+            return Err(format!("\"{}\" (file does not exist).", path.display()));
+        }
+    }
+    Ok(arg.into())
+}
+
 fn validate_plugin_extension(path: &Path) -> Result<(), String> {
     let ext = get_extension(path);
     if matches!(&*ext, "esp" | "esm" | "omwaddon" | "omwgame") {
         return Ok(());
     }
-    Err(format!("\"{}\" is not a map file!.", path.display()))
+    Err(format!(
+        "\"{}\" is not an Elder Scrolls plugin file!.",
+        path.display()
+    ))
 }
 
 fn validate_mode(arg: &str) -> Result<String, String> {
