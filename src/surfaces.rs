@@ -1,6 +1,6 @@
 pub mod scale_mode {
     pub const MORROWIND: f32 = 1.0;
-    pub const QUAKE: f32 = 3.16906460849;
+    pub const QUAKE: f32 = 2.0;
 }
 
 pub const BOOK_START_DEFAULT: &str =

@@ -25,13 +25,11 @@
     FogDensity(float) : "Density of interior fog. Set between 0 and 1." : "0"
     Fog_color(color) : "Color used for interior fog" : "15 15 15"
     Sun_color(color) : "Color used for interior sunlight" : "15 15 15"
-
-    
 ]
 
-@baseclass size(-10 -10 -22, 10 10 22) color(0 255 0) = PlayerClass []
+@baseclass size(-16 -16 -34, 16 16 33) color(0 255 0) = PlayerClass []
 
-@PointClass base(PlayerClass) = info_player_start : "Player 1 start" []
+@PointClass base(PlayerClass) = info_player_start : "Player Scale Reference" []
 
 // Begin common classes
 @BaseClass = baseObject
