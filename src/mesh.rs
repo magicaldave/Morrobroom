@@ -58,7 +58,7 @@ impl Mesh {
     }
 
     pub fn align_to_center(&mut self) {
-        let center = Mesh::find_geometric_center(&self.node_distances);
+        let center = Mesh::centroid(&self.node_distances);
         let rotation = Rotation3::new(Vector3::new(
             -self.mangle[0],
             -self.mangle[1],
@@ -92,7 +92,7 @@ impl Mesh {
         let _ = self.stream.save_path(name);
     }
 
-    pub fn find_geometric_center(vertices: &Vec<SV3>) -> SV3 {
+    pub fn centroid(vertices: &Vec<SV3>) -> SV3 {
         // Calculate the sum of all dimensions using fold
         vertices
             .iter()

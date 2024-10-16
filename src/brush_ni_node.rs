@@ -184,7 +184,7 @@ impl BrushNiNode {
 
     fn collect(&mut self) {
         if self.vis_verts.len() > 0 {
-            self.distance_from_origin = Mesh::find_geometric_center(&self.vis_verts)
+            self.distance_from_origin = Mesh::centroid(&self.vis_verts)
         }
 
         Self::to_nif_format(&mut self.vis_data, &self.vis_verts, &self.vis_tris);

@@ -230,8 +230,7 @@ fn main() {
             None => {}
         }
 
-        let mesh_distance: SV3 =
-            Mesh::find_geometric_center(&mesh.node_distances) * (*scale_mode as f32);
+        let mesh_distance: SV3 = Mesh::centroid(&mesh.node_distances) * (*scale_mode as f32);
         mesh.final_distance = mesh_distance;
         mesh.mangle = match get_prop("mangle", &prop_map) {
             mangle if mangle.is_empty() => *get_rotation(&"0 0 0".to_string()),
