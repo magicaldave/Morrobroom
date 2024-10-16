@@ -230,7 +230,8 @@ fn main() {
             None => {}
         }
 
-        let mesh_distance: SV3 = find_geometric_center(&mesh.node_distances) * (*scale_mode as f32);
+        let mesh_distance: SV3 =
+            Mesh::find_geometric_center(&mesh.node_distances) * (*scale_mode as f32);
         mesh.final_distance = mesh_distance;
         mesh.mangle = match get_prop("mangle", &prop_map) {
             mangle if mangle.is_empty() => *get_rotation(&"0 0 0".to_string()),
@@ -289,22 +290,6 @@ fn get_rotation(str: &String) -> Box<[f32; 3]> {
     }
 
     Box::new([array[2], array[0], array[1]])
-}
-
-fn find_geometric_center(vertices: &Vec<SV3>) -> SV3 {
-    // Calculate the sum of each dimension using fold
-    let (sum_x, sum_y, sum_z) = vertices.iter().fold((0.0, 0.0, 0.0), |acc, v| {
-        (acc.0 + v.x, acc.1 + v.y, acc.2 + v.z)
-    });
-
-    // Calculate the average position in each dimension
-    let num_vertices = vertices.len() as f32;
-    let center_x = sum_x / num_vertices;
-    let center_y = sum_y / num_vertices;
-    let center_z = sum_z / num_vertices;
-
-    // Return the geometric center as a new Vertex
-    SV3::new(center_x, center_y, center_z)
 }
 
 /// Should probably make some specific struct for handling ESP objects
