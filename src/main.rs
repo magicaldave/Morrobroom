@@ -24,7 +24,7 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 fn main() {
     let args = Command::new("morrobroom")
         .about("Compile trenchbroom .map files into usable Morrowind mods.")
-    .override_usage("morrobroom \"Path/to/Map_Name.map\" --scale 1.0")
+    .override_usage("morrobroom \"Path/to/Map_Name.map\"")
     .arg_required_else_help(true)
     .args(&[
         Arg::new("MAP_NAME")
@@ -44,7 +44,6 @@ fn main() {
         Arg::new("SCALE")
             .help("Overall scale to apply to output meshes. Quake and Morrowind use different scales, as may authors, so for accuracy reasons this argument is required.")
             .long("scale")
-            .required(true)
             .value_parser(validate_scale),
         Arg::new("MODE")
             .help("Whether to compile in openmw, morrowind.exe, or librequake mode.")
