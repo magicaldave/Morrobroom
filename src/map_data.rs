@@ -18,7 +18,7 @@ pub struct MapData {
     pub face_tri_indices: FaceTriangleIndices,
     pub inverted_face_tri_indices: FaceTriangleIndices,
     pub flat_normals: FaceNormals,
-    pub smooth_normals: FaceNormals,
+    // pub smooth_normals: FaceNormals,
     pub face_uvs: FaceUvs,
 }
 
@@ -33,7 +33,7 @@ impl MapData {
 
         let face_planes = shambler::face::face_planes(&geomap.face_planes);
         let brush_hulls = shambler::brush::brush_hulls(&geomap.brush_faces, &face_planes);
-        let (face_vertices, face_vertex_planes) =
+        let (face_vertices, _face_vertex_planes) =
             shambler::face::face_vertices(&geomap.brush_faces, &face_planes, &brush_hulls);
         let face_centers = shambler::face::face_centers(&face_vertices);
         let face_indices = shambler::face::face_indices(
@@ -57,8 +57,9 @@ impl MapData {
         let inverted_face_tri_indices =
             shambler::face::face_triangle_indices(&inverted_face_indices);
         let flat_normals = shambler::face::normals_flat(&face_vertices, &face_planes);
-        let smooth_normals =
-            shambler::face::normals_phong_averaged(&face_vertex_planes, &face_planes);
+
+        // let smooth_normals =
+        //     shambler::face::normals_phong_averaged(&face_vertex_planes, &face_planes);
 
         let texture_names = MapData::collect_textures(&geomap.textures);
         let texture_paths = MapData::find_textures_in_vfs(&texture_names);
@@ -115,7 +116,7 @@ impl MapData {
             face_tri_indices,
             inverted_face_tri_indices,
             flat_normals,
-            smooth_normals,
+            // smooth_normals,
             face_uvs,
         }
     }

@@ -1,6 +1,6 @@
-pub mod ScaleMode {
-    pub const Morrowind: f32 = 1.0;
-    pub const LibreQuake: f32 = 3.0;
+pub mod scale_mode {
+    pub const MORROWIND: f32 = 1.0;
+    pub const QUAKE: f32 = 3.16906460849;
 }
 
 pub const BOOK_START_DEFAULT: &str =
@@ -8,13 +8,13 @@ pub const BOOK_START_DEFAULT: &str =
 
 pub mod colors {
     pub const SKY: [f32; 3] = [1., 0., 1.];
-    pub const WATER: [f32; 3] = [0., 0., 1.];
-    pub const LAVA: [f32; 3] = [1., 0., 0.];
-    pub const SLIME: [f32; 3] = [0., 1., 0.];
+    // pub const WATER: [f32; 3] = [0., 0., 1.];
+    // pub const LAVA: [f32; 3] = [1., 0., 0.];
+    // pub const SLIME: [f32; 3] = [0., 1., 0.];
 }
 
 pub enum NiBroomSurface {
     NoClip = 1,
-    Phong = 2,
-    Invert = 4,
+    // Phong = 2,
+    // Invert = 4,
 }

@@ -17,7 +17,7 @@ shalrath = "0.2.5"
 [dependencies.tes3]
 git = "https://github.com/Greatness7/tes3"
 branch = "dev"
-features = ["esp", "nif", "nightly"]
+features = ["esp", "nif"]
 
 
 [dependencies.shambler]

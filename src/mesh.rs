@@ -17,7 +17,6 @@ pub struct Mesh {
     pub final_distance: SV3,
     pub mangle: [f32; 3],
     collision_index: NiLink<RootCollisionNode>,
-    root_index: NiLink<NiNode>,
 }
 
 impl Mesh {
@@ -36,7 +35,6 @@ impl Mesh {
 
         Mesh {
             stream,
-            root_index,
             base_index,
             collision_index,
             game_object: esp::TES3Object::Static(esp::Static::default()),

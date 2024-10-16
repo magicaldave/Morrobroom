@@ -126,7 +126,7 @@ pub fn book(entity_props: &HashMap<&String, &String>, ref_id: &str, mesh_name: &
     })
 }
 
-pub fn cell(entity_props: &HashMap<&String, &String>, ref_id: &str) -> Cell {
+pub fn cell(entity_props: &HashMap<&String, &String>) -> Cell {
     let mut flags = CellFlags::default() | CellFlags::IS_INTERIOR;
 
     flags |= [

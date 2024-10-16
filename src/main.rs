@@ -7,7 +7,7 @@ use std::{
 
 use clap::{Arg, Command};
 use shambler::Vector3 as SV3;
-use tes3::esp::{self, Cell, EditorId, Plugin};
+use tes3::esp::{self, Cell, EditorId, Header, Plugin, Static, TES3Object};
 
 mod brush_ni_node;
 use brush_ni_node::BrushNiNode;
@@ -48,18 +48,14 @@ fn main() {
     ])
     .get_matches();
 
-    let mw_dir = args.get_one::<String>("MW_DIR").unwrap();
     let map_name = args.get_one::<String>("MAP_NAME").unwrap();
     let default_mode = String::from("openmw");
     let mode = args.get_one::<String>("MODE").unwrap_or(&default_mode);
-    let scale_mode = match mode.as_str() {
-        "librequake" => surfaces::ScaleMode::LibreQuake,
-        _ => surfaces::ScaleMode::Morrowind,
+    let scale_mode = match mode.to_ascii_lowercase().as_str() {
+        "lq" | "librequake" => surfaces::scale_mode::QUAKE,
+        _ => surfaces::scale_mode::MORROWIND,
     };
     let (workdir, map_dir) = create_workdir(&map_name);
-
-    // Default plugin name is just the name of the map, but esp instead.
-    let map_id = &map_name[..map_name.len() - 4].to_string();
 
     let plugin_str = format!("{workdir}/{map_dir}.esp");
 
@@ -74,7 +70,6 @@ fn main() {
     // It can't be done multiple times :/
     let mut cell = None;
     let mut created_objects = Vec::new();
-    let mut meshes: HashMap<String, Mesh> = HashMap::new();
     let mut processed_base_objects: HashSet<String> = HashSet::new();
 
     let map_data = MapData::new(map_name);
@@ -82,7 +77,7 @@ fn main() {
     let mut indices: u32 = 0;
 
     for cell in plugin.objects_of_type::<Cell>() {
-        for ((mast_idx, ref_idx), reference) in &cell.references {
+        for ((_mast_idx, ref_idx), _reference) in &cell.references {
             if ref_idx > &indices {
                 indices = *ref_idx
             }
@@ -196,14 +191,14 @@ fn main() {
                     mesh.game_object = game_object::light(&prop_map, &ref_id, &mesh_name);
                 }
                 "worldspawn" => {
-                    let mut local_cell = game_object::cell(&prop_map, &ref_id);
+                    let mut local_cell = game_object::cell(&prop_map);
                     if local_cell.name.is_empty() {
                         local_cell.name = map_dir.clone();
                     }
-                    processed_base_objects.insert(local_cell.name.clone());
-                    processed_base_objects.insert(ref_id.clone());
+                    processed_base_objects.extend([local_cell.name.clone(), ref_id.clone()]);
+
                     cell = Some(local_cell);
-                    mesh.game_object = esp::TES3Object::Static(tes3::esp::Static {
+                    mesh.game_object = TES3Object::Static(Static {
                         id: ref_id.to_owned(),
                         mesh: mesh_name.to_owned(),
                         flags: esp::ObjectFlags::default(),
@@ -211,7 +206,7 @@ fn main() {
                 }
                 "func_group" => {
                     processed_base_objects.insert(ref_id.clone());
-                    mesh.game_object = esp::TES3Object::Static(tes3::esp::Static {
+                    mesh.game_object = TES3Object::Static(Static {
                         id: ref_id.to_owned(),
                         mesh: mesh_name.to_owned(),
                         ..Default::default()
@@ -227,7 +222,7 @@ fn main() {
             None => {}
         }
 
-        let mut mesh_distance: SV3 = find_geometric_center(&mesh.node_distances) * scale_mode;
+        let mesh_distance: SV3 = find_geometric_center(&mesh.node_distances) * scale_mode;
         mesh.final_distance = mesh_distance;
         mesh.mangle = match get_prop("mangle", &prop_map) {
             mangle if mangle.is_empty() => *get_rotation(&"0 0 0".to_string()),
@@ -306,19 +301,18 @@ fn find_geometric_center(vertices: &Vec<SV3>) -> SV3 {
 
 /// Should probably make some specific struct for handling ESP objects
 fn create_header_if_missing(plugin: &mut Plugin) {
-    match plugin.objects_of_type::<esp::Header>().count() {
+    match plugin.objects_of_type::<Header>().count() {
         0 => {
-            let mut header = esp::Header {
+            // Later during serialization, we should make sure to include author and header info.
+            plugin.objects.push(TES3Object::Header(Header {
                 version: 1.3,
                 ..Default::default()
-            };
-            // Later during serialization, we should make sure to include author and header info.
-            plugin.objects.push(esp::TES3Object::Header(header));
+            }));
         }
         _ => {
             println!(
                 "Plugin was found to already have {} header records",
-                plugin.objects_of_type::<esp::Header>().count()
+                plugin.objects_of_type::<Header>().count()
             )
         }
     }
