@@ -49,9 +49,12 @@ fn main() {
     .get_matches();
 
     let map_name = args.get_one::<String>("MAP_NAME").unwrap();
-    let default_mode = String::from("openmw");
-    let mode = args.get_one::<String>("MODE").unwrap_or(&default_mode);
-    let scale_mode = match mode.to_ascii_lowercase().as_str() {
+    let scale_mode = match args
+        .get_one::<String>("MODE")
+        .unwrap_or(&String::new())
+        .to_ascii_lowercase()
+        .as_str()
+    {
         "lq" | "librequake" => surfaces::scale_mode::QUAKE,
         _ => surfaces::scale_mode::MORROWIND,
     };
@@ -195,6 +198,7 @@ fn main() {
                     if local_cell.name.is_empty() {
                         local_cell.name = map_dir.clone();
                     }
+
                     processed_base_objects.extend([local_cell.name.clone(), ref_id.clone()]);
 
                     cell = Some(local_cell);
