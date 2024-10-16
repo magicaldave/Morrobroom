@@ -362,9 +362,10 @@ fn validate_input_plugin(arg: &str) -> Result<String, String> {
     if arg != "-" {
         let path = arg.as_ref();
         validate_plugin_extension(path)?;
-        if !path.exists() {
-            return Err(format!("\"{}\" (file does not exist).", path.display()));
-        }
+        println!(
+            "Warning! {} does not already exist. Creating a new plugin.",
+            arg
+        );
     }
     Ok(arg.into())
 }
