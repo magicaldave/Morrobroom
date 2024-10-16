@@ -62,23 +62,44 @@ impl BrushNiNode {
                 continue;
             };
 
-            let mut s_flags = match &map_data.geomap.face_extensions.get(face_id) {
-                Some(shalrath::repr::Extension::Quake2 {
-                    content_flags: _,
+            let (content_flags, mut surface_flags, _value) = match &map_data
+                .geomap
+                .face_extensions
+                .get(face_id)
+                .unwrap_or(&shalrath::repr::Extension::Standard)
+            {
+                &shalrath::repr::Extension::Quake2 {
+                    content_flags,
                     surface_flags,
-                    value: _,
-                }) => *surface_flags,
-                _ => 0,
+                    value,
+                } => (*content_flags, *surface_flags, *value),
+                _ => (0, 0, 0.0),
             };
 
             let vertices = &map_data.face_vertices.get(&face_id).unwrap();
 
-            // Later, we'll need to do something extra on the brush to define whether it can be inverted
-            let mut indices = match map_data.face_tri_indices.get(&face_id) {
-                Some(indices) => indices.clone(),
-                None => {
-                    continue;
-                }
+            let mut use_inverted_tris = false;
+
+            if content_flags & surfaces::NiBroomContent::Sky as u32 == 1 {
+                node.is_sky = true;
+                use_inverted_tris = true;
+            }
+
+            let mut indices = if use_inverted_tris {
+                map_data.inverted_face_tri_indices.get(&face_id).unwrap_or_else(|| {
+panic!("Critical error: Missing inverted face triangle indices for face_id: {:?}", face_id)
+}).clone()
+            } else {
+                map_data
+                    .face_tri_indices
+                    .get(&face_id)
+                    .unwrap_or_else(|| {
+                        panic!(
+                            "Critical error: Missing face triangle indices for face_id: {:?}",
+                            face_id
+                        )
+                    })
+                    .clone()
             };
 
             // We can't do fuzzier matches on this, so,
@@ -95,18 +116,20 @@ impl BrushNiNode {
             {
                 let inverted_indices = map_data.inverted_face_tri_indices.get(&face_id).unwrap();
                 indices.extend_from_slice(inverted_indices);
-                s_flags |= surfaces::NiBroomSurface::NoClip as u32;
+
+                surface_flags |= surfaces::NiBroomSurface::NoClip as u32;
                 println!("{face_id} interpreted as liquid")
             }
 
-            let uv_sets = &map_data.face_uvs.get(&face_id).unwrap();
+            let uv_sets = &map_data
+                .face_uvs
+                .get(&face_id)
+                .expect("Unable to collect face UVs for {face_id}");
 
             if texture_name != "clip" {
-                if !node.is_sky {
-                    node.normals
-                        .extend(&*map_data.flat_normals.get(&face_id).unwrap());
-                    node.uv_sets.extend(*uv_sets);
-                }
+                node.normals
+                    .extend(&*map_data.flat_normals.get(&face_id).unwrap());
+                node.uv_sets.extend(*uv_sets);
 
                 node.vis_verts.extend(*vertices);
                 node.vis_tris.push((*indices).to_vec());
@@ -115,7 +138,7 @@ impl BrushNiNode {
 
             // There is minor edge case in this approach where if all faces of an object do not have collision then an empty collision root is created
             // This is exactly what we want, but, I worry it will have stupid consequences later
-            if s_flags & surfaces::NiBroomSurface::NoClip as u32 == 0 {
+            if surface_flags & surfaces::NiBroomSurface::NoClip as u32 == 0 {
                 node.col_verts.extend(*vertices);
                 node.col_tris.push((*indices).to_vec());
             }
