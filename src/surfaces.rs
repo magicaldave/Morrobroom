@@ -18,3 +18,7 @@ pub enum NiBroomSurface {
     // Phong = 2,
     // Invert = 4,
 }
+
+pub enum NiBroomContent {
+    Sky = 1,
+}
