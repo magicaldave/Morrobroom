@@ -1,7 +1,7 @@
-pub mod scale_mode {
-    pub const MORROWIND: f32 = 1.0;
-    pub const QUAKE: f32 = 2.0;
-}
+// pub mod scale_mode {
+// pub const MORROWIND: f32 = 1.0;
+// pub const QUAKE: f32 = 3.0;
+// }
 
 pub const BOOK_START_DEFAULT: &str =
     "<DIV ALIGN=\"LEFT\"><FONT COLOR=\"000000\" SIZE=\"3\" FACE=\"Magic Cards\"><BR>";

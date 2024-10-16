@@ -24,7 +24,7 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 fn main() {
     let args = Command::new("morrobroom")
         .about("Compile trenchbroom .map files into usable Morrowind mods.")
-    .override_usage("morrobroom \"Path/to/Map_Name.map\" \"Path/To/Morrowind/Data Files/\"")
+    .override_usage("morrobroom \"Path/to/Map_Name.map\" --scale 1.0")
     .arg_required_else_help(true)
     .args(&[
         Arg::new("MAP_NAME")
@@ -41,6 +41,11 @@ fn main() {
             .help("Output plugin name. Can be a new or existing plugin.")
             .long("out")
             .value_parser(validate_input_plugin),
+        Arg::new("SCALE")
+            .help("Overall scale to apply to output meshes. Quake and Morrowind use different scales, as may authors, so for accuracy reasons this argument is required.")
+            .long("scale")
+            .required(true)
+            .value_parser(validate_scale),
         Arg::new("MODE")
             .help("Whether to compile in openmw, morrowind.exe, or librequake mode.")
             .long("mode")
@@ -49,15 +54,7 @@ fn main() {
     .get_matches();
 
     let map_name = args.get_one::<String>("MAP_NAME").unwrap();
-    let scale_mode = match args
-        .get_one::<String>("MODE")
-        .unwrap_or(&String::new())
-        .to_ascii_lowercase()
-        .as_str()
-    {
-        "lq" | "librequake" => surfaces::scale_mode::QUAKE,
-        _ => surfaces::scale_mode::MORROWIND,
-    };
+    let scale_mode = args.get_one::<f32>("SCALE").unwrap_or(&1.0);
     let (workdir, map_dir) = create_workdir(&map_name);
 
     let plugin_str = format!("{workdir}/{map_dir}.esp");
@@ -226,7 +223,7 @@ fn main() {
             None => {}
         }
 
-        let mesh_distance: SV3 = find_geometric_center(&mesh.node_distances) * scale_mode;
+        let mesh_distance: SV3 = find_geometric_center(&mesh.node_distances) * (*scale_mode as f32);
         mesh.final_distance = mesh_distance;
         mesh.mangle = match get_prop("mangle", &prop_map) {
             mangle if mangle.is_empty() => *get_rotation(&"0 0 0".to_string()),
@@ -399,6 +396,18 @@ fn validate_mode(arg: &str) -> Result<String, String> {
         "lq" => Ok(arg.into()),
         _ => Err(format!("\"{}\" is not a valid mode.", arg)),
     }
+}
+
+fn validate_scale(arg: &str) -> Result<f32, String> {
+    arg.parse::<f32>()
+        .map_err(|e| format!("Invalid scale value '{}': {}", arg, e))
+        .and_then(|num| {
+            if num == 0.0 {
+                Err("Scale value must be greater than 0".to_string())
+            } else {
+                Ok(num)
+            }
+        })
 }
 
 fn get_extension(path: &Path) -> String {
