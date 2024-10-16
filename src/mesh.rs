@@ -109,10 +109,10 @@ impl Mesh {
 
             let vis_index = self.stream.insert(node.vis_shape);
 
-            if !node.is_sky {
-                self.assign_base_texture(vis_index, node.texture);
-            } else {
-                self.assign_material(vis_index);
+            self.assign_base_texture(vis_index, node.texture);
+
+            if node.use_emissive {
+                self.assign_material(vis_index)
             }
 
             vis_data_index = self.stream.insert(node.vis_data);

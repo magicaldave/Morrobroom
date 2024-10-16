@@ -10,7 +10,7 @@ pub struct BrushNiNode {
     pub vis_shape: NiTriShape,
     pub vis_data: NiTriShapeData,
     pub vis_verts: Vec<SV3>,
-    pub is_sky: bool,
+    pub use_emissive: bool,
     pub texture: String,
     pub col_shape: NiTriShape,
     pub col_data: NiTriShapeData,
@@ -81,8 +81,11 @@ impl BrushNiNode {
             let mut use_inverted_tris = false;
 
             if content_flags & surfaces::NiBroomContent::Sky as u32 == 1 {
-                node.is_sky = true;
                 use_inverted_tris = true;
+            }
+
+            if content_flags & surfaces::NiBroomContent::UseEmissive as u32 != 0 {
+                node.use_emissive = true;
             }
 
             let mut indices = if use_inverted_tris {
@@ -105,7 +108,7 @@ panic!("Critical error: Missing inverted face triangle indices for face_id: {:?}
             // We can't do fuzzier matches on this, so,
             // we'll have to hardcode a set of sky texture names (Thanks skyrim)
             if texture_name.to_ascii_lowercase() == "sky5_blu" {
-                node.is_sky = true;
+                node.use_emissive = true;
             }
 
             // Test for water or slime types
@@ -232,7 +235,7 @@ impl Default for BrushNiNode {
             vis_data: NiTriShapeData::default(),
             vis_verts: Vec::new(),
             vis_tris: Vec::new(),
-            is_sky: false,
+            use_emissive: false,
             normals: Vec::new(),
             texture: String::new(),
             uv_sets: Vec::new(),

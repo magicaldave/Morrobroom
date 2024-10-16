@@ -21,4 +21,5 @@ pub enum NiBroomSurface {
 
 pub enum NiBroomContent {
     Sky = 1,
+    UseEmissive = 2,
 }
