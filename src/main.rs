@@ -37,8 +37,8 @@ fn main() {
             .value_parser(check_morrowind_directory)
             .long("mw-dir")
             .required(false),
-        Arg::new("PLUGIN_NAME")
-            .help("Output plugin name. Can be a new or existing plugin.")
+        Arg::new("PLUGIN_PATH")
+            .help("Path to output plugun. Can be a new or existing plugin, using absolute or relative paths.")
             .long("out")
             .value_parser(validate_input_plugin),
         Arg::new("SCALE")
@@ -54,16 +54,20 @@ fn main() {
 
     let map_name = args.get_one::<String>("MAP_NAME").unwrap();
     let scale_mode = args.get_one::<f32>("SCALE").unwrap_or(&1.0);
-    let (workdir, map_dir) = create_workdir(&map_name);
 
-    let plugin_str = format!("{workdir}/{map_dir}.esp");
-
-    let plugin_name = match args.get_one::<String>("PLUGIN_NAME") {
-        Some(name) => name,
-        None => &plugin_str,
+    let (workdir, map_dir, plugin_name) = match args.get_one::<String>("PLUGIN_PATH") {
+        Some(name) => {
+            let (wd, md) = create_workdir(name);
+            (wd, md, name.to_string())
+        }
+        None => {
+            let (wd, md) = create_workdir(&map_name);
+            let name = format!("{wd}/{md}.esp");
+            (wd, md, name)
+        }
     };
 
-    let mut plugin = esp::Plugin::from_path(plugin_name).unwrap_or(esp::Plugin::default());
+    let mut plugin = esp::Plugin::from_path(&plugin_name).unwrap_or(esp::Plugin::default());
 
     // Push the cell record to the plugin
     // It can't be done multiple times :/
@@ -240,8 +244,9 @@ fn main() {
         // Also we should probably just not check this way *only* and
         // also destroy matching objects once the refId has been determined.
         if !created_objects.contains(&mesh.game_object) {
-            println!("Saving base object definition & mesh for {ref_id} to plugin");
-            mesh.save(&format!("{}/Meshes/{}", workdir, mesh_name));
+            let mesh_path = format!("{workdir}/Meshes/{mesh_name}");
+            println!("Saving base object definition & mesh for {ref_id} to plugin as {mesh_path}");
+            mesh.save(&mesh_path);
             created_objects.push(mesh.game_object.clone());
         }
 
@@ -273,7 +278,7 @@ fn main() {
     create_header_if_missing(&mut plugin);
     plugin.sort_objects();
     plugin
-        .save_path(plugin_name)
+        .save_path(&plugin_name)
         .expect("Saving plugin failed!");
 
     println!("Wrote {plugin_name} to disk successfully.");
