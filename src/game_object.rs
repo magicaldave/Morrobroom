@@ -261,9 +261,7 @@ pub fn point_light(entity_props: &HashMap<&String, &String>, ref_id: &str) -> TE
             weight: 0.0,
             value: 0,
             time: 0,
-            radius: get_prop("Radius", entity_props)
-                .parse()
-                .expect("Cannot fail to extract from default function"),
+            radius: get_prop("Radius", entity_props).parse().unwrap_or(64),
             flags: LightFlags::from_bits(
                 get_prop("LightFlags", entity_props)
                     .parse::<u32>()
