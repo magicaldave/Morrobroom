@@ -271,15 +271,15 @@ fn main() {
         created_objects.push(esp::TES3Object::Cell(cell));
     }
 
+    let fail_str = format!("Saving {plugin_name} failed!");
+
     plugin
         .objects
         .retain(|obj| !processed_base_objects.contains(&obj.editor_id().to_string()));
     plugin.objects.extend(created_objects);
     create_header_if_missing(&mut plugin);
     plugin.sort_objects();
-    plugin
-        .save_path(&plugin_name)
-        .expect("Saving plugin failed!");
+    plugin.save_path(&plugin_name).expect(&fail_str);
 
     println!("Wrote {plugin_name} to disk successfully.");
 }
