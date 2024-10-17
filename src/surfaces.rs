@@ -1,17 +1,7 @@
-// pub mod scale_mode {
-// pub const MORROWIND: f32 = 1.0;
-// pub const QUAKE: f32 = 3.0;
-// }
-
 pub const BOOK_START_DEFAULT: &str =
     "<DIV ALIGN=\"LEFT\"><FONT COLOR=\"000000\" SIZE=\"3\" FACE=\"Magic Cards\"><BR>";
 
-pub mod colors {
-    pub const SKY: [f32; 3] = [1., 0., 1.];
-    // pub const WATER: [f32; 3] = [0., 0., 1.];
-    // pub const LAVA: [f32; 3] = [1., 0., 0.];
-    // pub const SLIME: [f32; 3] = [0., 1., 0.];
-}
+pub mod colors {}
 
 pub enum NiBroomSurface {
     NoClip = 1,
@@ -21,5 +11,4 @@ pub enum NiBroomSurface {
 
 pub enum NiBroomContent {
     Sky = 1,
-    UseEmissive = 2,
 }
