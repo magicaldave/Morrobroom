@@ -165,10 +165,8 @@ fn main() {
             }
         };
 
-        let lowest_available_index: u32 = (1..).find(|&n| !used_indices.contains(&n)).unwrap_or(1);
-
         if processed_base_objects.contains(&ref_id.to_string()) {
-            println!("Placing new instance of {ref_id} as ref {lowest_available_index}");
+            println!("Placing new instance of {ref_id}");
         } else {
             processed_base_objects.insert(ref_id.to_string());
         }
@@ -250,20 +248,54 @@ fn main() {
             created_objects.push(mesh.game_object.clone());
         }
 
-        if let Some(ref mut local_cell) = cell {
-            local_cell.references.insert(
-                (0 as u32, lowest_available_index),
-                esp::Reference {
-                    id: ref_id.to_owned(),
-                    mast_index: 0 as u32,
-                    refr_index: lowest_available_index,
-                    translation: [mesh_distance.x, mesh_distance.y, mesh_distance.z],
-                    rotation: [-mesh.mangle[0], -mesh.mangle[1], -mesh.mangle[2]],
-                    ..Default::default()
-                },
-            );
+        append_cell_reference(
+            &mut used_indices,
+            &mut cell,
+            ref_id,
+            mesh_distance,
+            mesh.mangle,
+        );
+    }
 
-            used_indices.insert(lowest_available_index);
+    for entity_id in map_data.geomap.point_entities.iter() {
+        let prop_map = map_data.get_entity_properties(entity_id);
+        let lowest_available_index = lowest_available_index(&used_indices);
+
+        match prop_map
+            .get(&"classname".to_string())
+            .expect("All point entities have class names")
+            .as_str()
+        {
+            light if light.contains("Light_Point") => {
+                let mut ref_id = format!("{map_dir}-pointlight-{lowest_available_index}");
+                ref_id = ref_id[..min(ref_id.len(), 32)].to_string();
+
+                let translation: SV3 = {
+                    let coords: Vec<f32> = prop_map
+                        .get(&"origin".to_string())
+                        .expect("All point entities must have an origin")
+                        .split_whitespace()
+                        .map(|s| s.parse::<f32>().expect("Invalid coordinate"))
+                        .collect();
+
+                    assert_eq!(coords.len(), 3, "Origin must have exactly 3 coordinates");
+
+                    SV3::new(coords[0], coords[1], coords[2]) * (*scale_mode)
+                };
+
+                created_objects.push(game_object::point_light(&prop_map, ref_id.as_str()));
+
+                append_cell_reference(
+                    &mut used_indices,
+                    &mut cell,
+                    ref_id,
+                    translation,
+                    [0.0, 0.0, 0.0],
+                );
+            }
+            class => {
+                println!("Unidentified point entity class: {class}")
+            }
         }
     }
 
@@ -282,6 +314,36 @@ fn main() {
     plugin.save_path(&plugin_name).expect(&fail_str);
 
     println!("Wrote {plugin_name} to disk successfully.");
+}
+
+fn lowest_available_index(used_indices: &HashSet<u32>) -> u32 {
+    (1..).find(|&n| !used_indices.contains(&n)).unwrap_or(1)
+}
+
+fn append_cell_reference(
+    used_indices: &mut HashSet<u32>,
+    cell: &mut Option<Cell>,
+    ref_id: String,
+    translation: SV3,
+    rotation: [f32; 3],
+) {
+    let lowest_available_index = lowest_available_index(&used_indices);
+
+    if let Some(ref mut local_cell) = cell {
+        local_cell.references.insert(
+            (0 as u32, lowest_available_index),
+            esp::Reference {
+                id: ref_id.to_owned(),
+                mast_index: 0 as u32,
+                refr_index: lowest_available_index,
+                translation: [translation.x, translation.y, translation.z],
+                rotation: [-rotation[0], -rotation[1], -rotation[2]],
+                ..Default::default()
+            },
+        );
+
+        used_indices.insert(lowest_available_index);
+    }
 }
 
 fn get_rotation(str: &String) -> Box<[f32; 3]> {

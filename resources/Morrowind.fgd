@@ -1947,28 +1947,6 @@
 
 // End armor-specific classes
 
-// Since lights can be carryable or not, we use this
-// So that it can be a brush or point class
-@BaseClass = LightData : "Light Data"
-[
-    Sound(string) : "Internal SoundID played by this light. Can only be determined through a Morrowind Construction set."
-    Time(int) : "Amount of time the light will last before fading. A value of zero indicates the light does not expire."
-    Radius(int) : "Radius of the light"
-    light_color(color) : "Light Color"
-    LightFlags(Flags) =
-    	[
-	    	1 : "Dynamic" : 0
-            2 : "Carryable" : 0
-            4 : "Negative" : 0
-		    8 : "Flicker" : 0
-		    16 : "Fire" : 0
-		    32 : "OffByDefault" : 0
-		    64 : "FlickerSLOW" : 0
-		    128 : "Pulse" : 0
-		    256 : "PulseSlow" : 0
-        ]
-]
-
 // Actual object types follow this point
 @SolidClass base(baseObject) = world_Activator: "Base Activator Entity"
 [
@@ -2063,5 +2041,55 @@
 @SolidClass base(Referenceable, MagicEffect2) = item_Ingredient : "Base Ingredient Entity" []
 
 
-@SolidClass base(Referenceable, LightData) = item_Light : "Brush Light" []
-@PointClass base(baseObject, LightData) = world_Light: "Point Light" [] // No point entities are implemented yet
+@SolidClass base(Referenceable) = item_Light : "Brush Light" [
+    Sound(string) : "Internal SoundID played by this light. Can only be determined through a Morrowind Construction set."
+    Script(string) : "Internal MWScript attached to this light. Can only be determined through a Morrowind Construction set."
+    Time(int) : "Amount of time the light will last before fading. A value of zero indicates the light does not expire."
+    Radius(int) : "Radius of the light"
+    light_color(color) : "Light Color"
+    LightFlags(Flags) =
+    	[
+	    	1 : "Dynamic" : 0
+            2 : "Carryable" : 0
+            4 : "Negative" : 0
+		    8 : "Flicker" : 0
+		    16 : "Fire" : 0
+		    32 : "OffByDefault" : 0
+		    64 : "FlickerSLOW" : 0
+		    128 : "Pulse" : 0
+		    256 : "PulseSlow" : 0
+        ]
+]
+
+// Since lights can be carryable or not, we use this
+// So that it can be a brush or point class
+@BaseClass = PointLightData : "Light Data"
+[
+    Sound(string) : "Internal SoundID played by this light. Can only be determined through a Morrowind Construction set."
+    Script(string) : "Internal MWScript attached to this light. Can only be determined through a Morrowind Construction set."
+    Radius(int) : "Light Radius" : 64
+    light_color(color) : "Light Color"
+    LightFlags(Flags) =
+    	[
+	    	1 : "Dynamic" : 0
+            4 : "Negative" : 0
+		    8 : "Flicker" : 0
+		    16 : "Fire" : 0
+		    32 : "OffByDefault" : 0
+		    64 : "FlickerSLOW" : 0
+		    128 : "Pulse" : 0
+		    256 : "PulseSlow" : 0
+        ]
+]
+
+@PointClass size(-32 -32 -32, 32 32 32) color (0 64 128) base(PointLightData) = Light_Point64: "64 Unit Light" []
+
+@PointClass size(-32 -32 -32, 32 32 32) color (0 64 128) base(PointLightData) = Light_Point128: "128 Unit Light" [ Radius(int): "Light Radius" : 128 ]
+
+@PointClass size(-32 -32 -32, 32 32 32) color (0 64 128) base(PointLightData) = Light_Point256: "256 Unit Light" [ Radius(int): "Light Radius" : 256 ]
+
+@PointClass size(-32 -32 -32, 32 32 32) color (0 64 128) base(PointLightData) = Light_Point512: "512 Unit Light" [ Radius(int): "Light Radius" : 512 ]
+
+@PointClass size(-32 -32 -32, 32 32 32) color (0 64 128) base(PointLightData) = Light_Point1024: "1024 Unit Light" [ Radius(int): "Light Radius" : 1024 ]
+
+@SolidClass = world_Sky : "Skybox Brush" []

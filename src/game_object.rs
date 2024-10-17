@@ -227,6 +227,30 @@ pub fn ingredient(
     })
 }
 
+pub fn point_light(entity_props: &HashMap<&String, &String>, ref_id: &str) -> TES3Object {
+    TES3Object::Light(Light {
+        id: ref_id.to_owned(),
+        script: get_prop("Script", entity_props),
+        sound: get_prop("Sound", entity_props),
+        data: LightData {
+            weight: 0.0,
+            value: 0,
+            time: 0,
+            radius: get_prop("Radius", entity_props)
+                .parse()
+                .expect("Cannot fail to extract from default function"),
+            flags: LightFlags::from_bits(
+                get_prop("LightFlags", entity_props)
+                    .parse::<u32>()
+                    .unwrap_or_default(),
+            )
+            .expect("This cannot fail"), // Famous last words
+            color: get_color(&get_prop("light_color", entity_props)),
+        },
+        ..Default::default()
+    })
+}
+
 pub fn light(
     entity_props: &HashMap<&String, &String>,
     ref_id: &str,
