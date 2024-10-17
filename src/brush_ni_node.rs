@@ -1,10 +1,29 @@
 use std::collections::HashSet;
 
 use shalrath;
-use shambler::{brush::BrushId, face::FaceId, Vector2 as SV2, Vector3 as SV3};
+use shambler::{brush::BrushId, entity::EntityId, face::FaceId, Vector2 as SV2, Vector3 as SV3};
 use tes3::nif::{NiTriShape, NiTriShapeData};
 
 use crate::{map_data::MapData, surfaces, Mesh};
+
+#[derive(PartialEq)]
+pub struct BrushNiMatProps {
+    pub emissive_color: Option<[f32; 3]>,
+    pub ambient_color: Option<[f32; 3]>,
+    pub diffuse_color: Option<[f32; 3]>,
+    pub alpha: Option<f32>,
+}
+
+impl BrushNiMatProps {
+    pub fn default() -> BrushNiMatProps {
+        BrushNiMatProps {
+            emissive_color: None,
+            diffuse_color: None,
+            ambient_color: None,
+            alpha: None,
+        }
+    }
+}
 
 pub struct BrushNiNode {
     pub vis_shape: NiTriShape,
@@ -16,6 +35,8 @@ pub struct BrushNiNode {
     pub col_data: NiTriShapeData,
     pub col_verts: Vec<SV3>,
     pub distance_from_origin: SV3,
+    // Mesh color values when doing more direct edits
+    pub mat_props: BrushNiMatProps,
     // Textures and triangles are only used internally
     normals: Vec<SV3>,
     uv_sets: Vec<SV2>,
@@ -24,10 +45,14 @@ pub struct BrushNiNode {
 }
 
 impl BrushNiNode {
-    pub fn from_brushes(brushes: &[BrushId], map_data: &MapData) -> Vec<BrushNiNode> {
+    pub fn from_brushes(
+        brushes: &[BrushId],
+        map_data: &MapData,
+        entity_id: &EntityId,
+    ) -> Vec<BrushNiNode> {
         brushes
             .iter()
-            .flat_map(|brush_id| BrushNiNode::from_brush(brush_id, map_data))
+            .flat_map(|brush_id| BrushNiNode::from_brush(brush_id, entity_id, map_data))
             .collect()
     }
 
@@ -35,13 +60,17 @@ impl BrushNiNode {
     /// But one brush may have multiple textures, whereas one TriShape should only
     /// ever have one texture. So even though we are requesting information for one brush,
     /// Any one brush might be an arbitrary number of TriShapes due to texture splitting.
-    pub fn from_brush(brush_id: &BrushId, map_data: &MapData) -> Vec<BrushNiNode> {
+    pub fn from_brush(
+        brush_id: &BrushId,
+        entity_id: &EntityId,
+        map_data: &MapData,
+    ) -> Vec<BrushNiNode> {
         let mut face_nodes = Vec::new();
 
         let faces_with_textures = Self::collect_faces_with_textures(brush_id, map_data);
 
         for face_set in faces_with_textures {
-            face_nodes.push(Self::node_from_faces(&face_set, &map_data));
+            face_nodes.push(Self::node_from_faces(&face_set, &map_data, entity_id));
         }
 
         for node in &mut face_nodes {
@@ -51,8 +80,46 @@ impl BrushNiNode {
         face_nodes
     }
 
-    fn node_from_faces(faces: &Vec<FaceId>, map_data: &MapData) -> BrushNiNode {
+    pub fn get_color(color_str: &str) -> [f32; 3] {
+        color_str
+            .split_whitespace()
+            .take(3)
+            .map(|s| s.parse().unwrap_or_default())
+            .collect::<Vec<f32>>()
+            .try_into()
+            .expect("Color props value was invalid!")
+    }
+
+    fn node_from_faces(
+        faces: &Vec<FaceId>,
+        map_data: &MapData,
+        entity_id: &EntityId,
+    ) -> BrushNiNode {
         let mut node = BrushNiNode::default();
+
+        let entity_props = map_data.get_entity_properties(entity_id);
+
+        ["ambient", "diffuse", "emissive"]
+            .iter()
+            .for_each(|color_type| {
+                if let Some(color) = entity_props.get(&format!("{}_color", color_type)) {
+                    let color_value = Some(Self::get_color(color));
+                    match *color_type {
+                        "ambient" => node.mat_props.ambient_color = color_value,
+                        "diffuse" => node.mat_props.diffuse_color = color_value,
+                        "emissive" => node.mat_props.emissive_color = color_value,
+                        _ => unreachable!(),
+                    }
+                }
+            });
+
+        if let Some(value) = entity_props.get(&"material_alpha".to_string()) {
+            node.mat_props.alpha = Some(
+                value
+                    .parse()
+                    .expect("Failed to parse float value from material properties!"),
+            );
+        }
 
         for face_id in faces.iter() {
             let texture_id = map_data.geomap.face_textures.get(face_id).unwrap();
@@ -82,10 +149,6 @@ impl BrushNiNode {
 
             if content_flags & surfaces::NiBroomContent::Sky as u32 == 1 {
                 use_inverted_tris = true;
-            }
-
-            if content_flags & surfaces::NiBroomContent::UseEmissive as u32 != 0 {
-                node.use_emissive = true;
             }
 
             let mut indices = if use_inverted_tris {
@@ -244,6 +307,7 @@ impl Default for BrushNiNode {
             col_verts: Vec::new(),
             col_tris: Vec::new(),
             distance_from_origin: SV3::default(),
+            mat_props: BrushNiMatProps::default(),
         }
     }
 }

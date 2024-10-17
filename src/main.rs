@@ -100,7 +100,7 @@ fn main() {
     for (entity_id, brushes) in map_data.geomap.entity_brushes.iter() {
         let prop_map = map_data.get_entity_properties(entity_id);
 
-        let mut mesh = Mesh::from_map(brushes, &map_data, &scale_mode);
+        let mut mesh = Mesh::from_map(brushes, &map_data, &scale_mode, entity_id);
 
         match prop_map.get(&"_tb_id".to_string()) {
             Some(group_id) => {
@@ -146,7 +146,7 @@ fn main() {
                         None => {} // object has no refid, and it's not a group, but it is a member of a group. This maybe shouldn't happen
                     }
 
-                    nodes.extend(BrushNiNode::from_brushes(brushes, &map_data));
+                    nodes.extend(BrushNiNode::from_brushes(brushes, &map_data, entity_id));
                 }
 
                 for node in nodes {

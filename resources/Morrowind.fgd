@@ -1,4 +1,12 @@
-@SolidClass = worldspawn : "World entity"
+@BaseClass = paintable
+[
+    emissive_color(color) : "Color emitted by the brush" : "1.0 0 1.0"
+    ambient_color(color) : "Ambient color of the brush" : "1.0 0 0"
+    diffuse_color(color) : "Diffuse color of the brush" : "0 1.0 0"
+    material_alpha(float) : "Material Transparency" : "0.0"
+]
+
+@SolidClass base(paintable) = worldspawn : "World entity"
 [
 	FakeExterior(choices) : "Use sky for this cell" : 0 =
     [
@@ -32,7 +40,8 @@
 @PointClass base(PlayerClass) = info_player_start : "Player Scale Reference" []
 
 // Begin common classes
-@BaseClass = baseObject
+
+@BaseClass base(paintable) = baseObject
 [
     RefId(string) : "Ref Id for the object" : "agronian guy"
     Name(string)  : "Ingame readable name for the book" : "Tarhiel"

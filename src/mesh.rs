@@ -1,12 +1,15 @@
 use nalgebra::{Rotation3, Vector3};
 use openmw_cfg::{find_file, get_config};
-use shambler::{brush::BrushId, Vector3 as SV3};
+use shambler::{brush::BrushId, entity::EntityId, Vector3 as SV3};
 use tes3::{
     esp,
-    nif::{self, NiLink, NiMaterialProperty, NiNode, NiStream, NiTriShapeData, RootCollisionNode},
+    nif::{
+        self, NiAlphaProperty, NiLink, NiMaterialProperty, NiNode, NiStream, NiTriShape,
+        NiTriShapeData, RootCollisionNode,
+    },
 };
 
-use crate::{surfaces, BrushNiNode, MapData};
+use crate::{brush_ni_node::BrushNiMatProps, BrushNiNode, MapData};
 
 #[derive(Clone)]
 pub struct Mesh {
@@ -44,11 +47,16 @@ impl Mesh {
         }
     }
 
-    pub fn from_map(brushes: &Vec<BrushId>, map_data: &MapData, scale_mode: &f32) -> Mesh {
+    pub fn from_map(
+        brushes: &Vec<BrushId>,
+        map_data: &MapData,
+        scale_mode: &f32,
+        entity_id: &EntityId,
+    ) -> Mesh {
         let mut mesh = Mesh::new(scale_mode);
 
         for brush_id in brushes {
-            let brush_nodes = BrushNiNode::from_brush(brush_id, map_data);
+            let brush_nodes = BrushNiNode::from_brush(brush_id, entity_id, map_data);
 
             for node in brush_nodes {
                 mesh.attach_node(node);
@@ -109,11 +117,9 @@ impl Mesh {
 
             let vis_index = self.stream.insert(node.vis_shape);
 
-            self.assign_base_texture(vis_index, node.texture);
+            self.assign_base_texture(vis_index, node.texture.clone());
 
-            if node.use_emissive {
-                self.assign_material(vis_index)
-            }
+            self.assign_material(node.mat_props, vis_index);
 
             vis_data_index = self.stream.insert(node.vis_data);
 
@@ -145,7 +151,7 @@ impl Mesh {
         }
     }
 
-    fn assign_base_texture(&mut self, object: nif::NiLink<nif::NiTriShape>, file_path: String) {
+    fn assign_base_texture(&mut self, object: NiLink<NiTriShape>, file_path: String) {
         let config =
             get_config().expect("Openmw.cfg not located! Be sure you have a valid openmw setup.");
         // Create and insert a NiTexturingProperty and NiSourceTexture.
@@ -178,18 +184,44 @@ impl Mesh {
         object.properties.push(tex_prop_link.cast());
     }
 
-    pub fn assign_material(&mut self, object: nif::NiLink<nif::NiTriShape>) {
-        let mut mat = NiMaterialProperty {
-            emissive_color: surfaces::colors::SKY.into(),
-            ..Default::default()
-        };
+    pub fn assign_material(&mut self, props: BrushNiMatProps, object: NiLink<NiTriShape>) {
+        if props == BrushNiMatProps::default() {
+            return;
+        }
+
+        let mut mat = NiMaterialProperty::default();
 
         mat.flags = 1;
 
-        let mat_link = self.stream.insert(mat);
+        if let Some(color) = props.emissive_color {
+            mat.emissive_color = color.into();
+        }
+        if let Some(color) = props.ambient_color {
+            mat.ambient_color = color.into();
+        }
+        if let Some(color) = props.diffuse_color {
+            mat.diffuse_color = color.into();
+        }
+        if let Some(value) = props.alpha {
+            mat.alpha = value;
 
-        // Assign the tex prop to the target object
-        let object = self.stream.get_mut(object).unwrap();
-        object.properties.push(mat_link.cast());
+            let mut alpha_prop = NiAlphaProperty::default();
+            alpha_prop.flags = 237; // Default flag value for alpha prop
+
+            let alpha_link = self.stream.insert(alpha_prop);
+
+            self.stream
+                .get_mut(object)
+                .expect("Self retreival should never fail")
+                .properties
+                .push(alpha_link.cast())
+        }
+
+        let mat_link = self.stream.insert(mat);
+        self.stream
+            .get_mut(object)
+            .expect("Self retreival should never fail")
+            .properties
+            .push(mat_link.cast());
     }
 }
