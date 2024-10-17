@@ -179,6 +179,9 @@ fn main() {
                 "world_Activator" => {
                     mesh.game_object = game_object::activator(&prop_map, &ref_id, &mesh_name);
                 }
+                "world_Container" => {
+                    mesh.game_object = game_object::container(&prop_map, &ref_id, &mesh_name);
+                }
                 "item_Alchemy" => {
                     mesh.game_object = game_object::potion(&prop_map, &ref_id, &mesh_name);
                 }

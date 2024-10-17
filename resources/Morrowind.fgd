@@ -2092,4 +2092,37 @@
 
 @PointClass size(-32 -32 -32, 32 32 32) color (0 64 128) base(PointLightData) = Light_Point1024: "1024 Unit Light" [ Radius(int): "Light Radius" : 1024 ]
 
-@SolidClass = world_Sky : "Skybox Brush" []
+@SolidClass base(baseObject) = world_Container : "Container type" [
+    Script(string) : "Id of the script used by the object. Optional. Be warned that all instances of this refId will share the script." : "fallingScript"
+    Encumbrance(float) : "Total carrying capacity of the container. Optional. 0 means unlimited capacity.": "0.0"
+
+    ContainerFlags(Flags) =
+    	[
+	    	1 : "Respawns" : 0
+            2 : "Organic" : 0
+        ]
+
+    Item1_Id(string) : "Ref Id of contained object"
+    Item1_Count(integer): "Number of contained instances" : 1
+
+    Item2_Id(string) : "Ref Id of contained object"
+    Item2_Count(integer): "Number of contained instances" : 1
+
+    Item3_Id(string) : "Ref Id of contained object"
+    Item3_Count(integer): "Number of contained instances" : 1
+
+    Item4_Id(string) : "Ref Id of contained object"
+    Item4_Count(integer): "Number of contained instances" : 1
+
+    Item5_Id(string) : "Ref Id of contained object"
+    Item5_Count(integer): "Number of contained instances" : 1
+
+    Item6_Id(string) : "Ref Id of contained object"
+    Item6_Count(integer): "Number of contained instances" : 1
+
+    Item7_Id(string) : "Ref Id of contained object"
+    Item7_Count(integer): "Number of contained instances" : 1
+
+    Item8_Id(string) : "Ref Id of contained object"
+    Item8_Count(integer): "Number of contained instances" : 1
+]

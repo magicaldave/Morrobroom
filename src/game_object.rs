@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use tes3::esp::{
     Activator, Alchemy, AlchemyData, AlchemyFlags, Apparatus, ApparatusData, Armor, ArmorData,
     AtmosphereData, AttributeId, AttributeId2, BipedObject, Book, BookData, BookType, Cell,
-    CellFlags, Effect, EffectId, EffectId2, EffectRange, Ingredient, IngredientData, Light,
-    LightData, LightFlags, ObjectFlags, SkillId, SkillId2, TES3Object,
+    CellFlags, Container, ContainerFlags, Effect, EffectId, EffectId2, EffectRange, Ingredient,
+    IngredientData, Light, LightData, LightFlags, ObjectFlags, SkillId, SkillId2, TES3Object,
 };
 
 pub fn activator(
@@ -173,6 +173,31 @@ pub fn cell(entity_props: &HashMap<&String, &String>) -> Cell {
         }),
         ..Default::default()
     }
+}
+
+pub fn container(
+    entity_props: &HashMap<&String, &String>,
+    ref_id: &str,
+    mesh_name: &str,
+) -> TES3Object {
+    TES3Object::Container(Container {
+        flags: ObjectFlags::default(),
+        id: ref_id.to_owned(),
+        name: get_prop("Name", entity_props),
+        script: get_prop("Script", entity_props),
+        mesh: mesh_name.to_owned(),
+        encumbrance: get_prop("Encumbrance", entity_props)
+            .parse::<f32>()
+            .unwrap_or_default(),
+        container_flags: ContainerFlags::from_bits(
+            get_prop("ContainerFlags", entity_props)
+                .parse::<u32>()
+                .unwrap_or_default()
+                | 8,
+        )
+        .expect("Invalid Potion Flags!"),
+        inventory: collect_contained_objects(entity_props),
+    })
 }
 
 pub fn ingredient(
@@ -428,6 +453,29 @@ fn collect_biped_objects(prop_map: &HashMap<&String, &String>) -> Vec<BipedObjec
     }
 
     biped_objects
+}
+
+fn collect_contained_objects(
+    prop_map: &HashMap<&String, &String>,
+) -> Vec<(i32, crate::esp::FixedString<32>)> {
+    let mut contained_objects = Vec::new();
+
+    for count in 1..7 {
+        match prop_map.get(&format!("Item{count}_Id")) {
+            Some(contained_id) => {
+                let item_count: i32 = prop_map
+                    .get(&format!("Item{count}_Count"))
+                    .map_or("1", |v| v)
+                    .parse()
+                    .expect("Cannot fail parsing a default-initialized integer");
+                let object_id = crate::esp::FixedString::<32>(contained_id.to_string());
+                contained_objects.push((item_count, object_id))
+            }
+            None => continue,
+        }
+    }
+
+    contained_objects
 }
 
 fn get_color(color_str: &String) -> [u8; 4] {
