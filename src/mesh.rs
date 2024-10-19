@@ -9,7 +9,10 @@ use tes3::{
     },
 };
 
-use crate::{brush_ni_node::BrushNiMatProps, BrushNiNode, MapData};
+use crate::{
+    brush_ni_node::{BrushNiAlphaProps, BrushNiMatProps},
+    BrushNiNode, MapData,
+};
 
 #[derive(Clone)]
 pub struct Mesh {
@@ -193,20 +196,27 @@ impl Mesh {
 
         mat.flags = 1;
 
-        if let Some(color) = props.emissive_color {
+        if let Some(color) = props.color.emissive {
             mat.emissive_color = color.into();
         }
-        if let Some(color) = props.ambient_color {
+        if let Some(color) = props.color.ambient {
             mat.ambient_color = color.into();
         }
-        if let Some(color) = props.diffuse_color {
+        if let Some(color) = props.color.diffuse {
             mat.diffuse_color = color.into();
         }
-        if let Some(value) = props.alpha {
-            mat.alpha = value;
+        if props.alpha != BrushNiAlphaProps::default() {
+            mat.alpha = props.alpha.opacity.unwrap_or(1.0);
 
             let mut alpha_prop = NiAlphaProperty::default();
-            alpha_prop.flags = 237; // Default flag value for alpha prop
+
+            alpha_prop.flags = props.alpha.to_flags();
+
+            if let Some(_) = props.alpha.use_test {
+                alpha_prop.test_ref = props.alpha.test_threshold.unwrap_or(128);
+            }
+
+            dbg!(props.alpha, &alpha_prop.flags);
 
             let alpha_link = self.stream.insert(alpha_prop);
 

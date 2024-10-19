@@ -6,21 +6,155 @@ use tes3::nif::{NiTriShape, NiTriShapeData};
 
 use crate::{map_data::MapData, surfaces, Mesh};
 
+macro_rules! define_enum_with_fromstr {
+    (
+        $(#[$meta:meta])*
+            $vis:vis enum $name:ident {
+                $(
+                    $variant:ident = $value:expr
+                ),* $(,)?
+            }
+        default = $default:ident
+    ) => {
+        #[derive(Clone, Copy, Debug, PartialEq)]
+            $vis enum $name {
+                $(
+                    $variant = $value,
+                )*
+            }
+
+        impl std::str::FromStr for $name {
+            type Err = String;
+
+            fn from_str(s: &str) -> Result<Self, Self::Err> {
+                match s.parse::<i32>() {
+                    $(
+                        Ok($value) => Ok($name::$variant),
+                    )*
+                        Ok(v) => {
+                            println!("WARNING: Falling through to default value {:?} for {} (received {})",
+                                     $name::$default, stringify!($name), v);
+                            Ok($name::$default)
+                        },
+                    Err(_) => Err(format!("Cannot parse '{}' as {}", s, stringify!($name))),
+                }
+            }
+        }
+
+        impl Default for $name {
+            fn default() -> $name {
+                $name::$default
+            }
+        }
+    }
+}
+
+define_enum_with_fromstr! {
+    pub enum BrushSourceBlendMode {
+        One = 0,
+        Zero = 2,
+        SourceColor = 4,
+        OneMinusSourceColor = 6,
+        DestinationColor = 8,
+        OneMinusDestinationColor = 10,
+        SourceAlpha = 12,
+        OneMinusSourceAlpha = 14,
+        DestinationAlpha = 16,
+        OneMinusDestinationALpha = 18,
+        SourceAlphaSaturate = 20,
+    }
+    default = SourceAlpha
+}
+
+define_enum_with_fromstr! {
+    pub enum BrushDestinationBlendMode {
+        One = 0,
+        Zero = 32,
+        SourceColor = 64,
+        OneMinusSourceColor = 96,
+        DestinationColor = 128,
+        OneMinusDestinationColor = 160,
+        SourceAlpha = 192,
+        OneMinusSourceAlpha = 224,
+        DestinationAlpha = 256,
+        OneMinusDestinationALpha = 288,
+        SourceAlphaSaturate = 320,
+    }
+    default = OneMinusSourceAlpha
+}
+
+define_enum_with_fromstr! {
+    pub enum BrushAlphaTestFunction {
+        Always = 0,
+        Less = 1024,
+        Equal = 2048,
+        LessThanOrEqual = 3072,
+        GreaterThan = 4096,
+        NotEqual = 5120,
+        GreaterThanOrEqual = 6144,
+        Never = 7168,
+    }
+    default = GreaterThan
+}
+
+define_enum_with_fromstr! {
+    pub enum BrushUseAlpha {
+        OFF = 0,
+        BlendEnable = 1,
+        TestEnable = 512,
+    }
+    default = TestEnable
+}
+
+define_enum_with_fromstr! {
+    pub enum BrushNoSort {
+        OFF = 0,
+        ON = 8196,
+    }
+    default = OFF
+}
+
+#[derive(Debug, Default, PartialEq)]
+pub struct BrushNiAlphaProps {
+    pub opacity: Option<f32>,
+    pub use_blend: Option<BrushUseAlpha>,
+    pub blend_source_mode: Option<BrushSourceBlendMode>,
+    pub blend_destination_mode: Option<BrushDestinationBlendMode>,
+    pub use_test: Option<BrushUseAlpha>,
+    pub test_function: Option<BrushAlphaTestFunction>,
+    pub test_threshold: Option<u8>,
+    pub no_sort: Option<BrushNoSort>,
+}
+
+impl BrushNiAlphaProps {
+    pub fn to_flags(&self) -> u16 {
+        self.use_blend.unwrap_or_default() as u16
+            | self.blend_source_mode.unwrap_or_default() as u16
+            | self.blend_destination_mode.unwrap_or_default() as u16
+            | self.use_test.unwrap_or_default() as u16
+            | self.test_function.unwrap_or_default() as u16
+            | self.no_sort.unwrap_or_default() as u16
+    }
+}
+
+#[derive(Default, PartialEq)]
+pub struct BrushNiColorProps {
+    pub emissive: Option<[f32; 3]>,
+    pub ambient: Option<[f32; 3]>,
+    pub diffuse: Option<[f32; 3]>,
+}
+
 #[derive(PartialEq)]
 pub struct BrushNiMatProps {
-    pub emissive_color: Option<[f32; 3]>,
-    pub ambient_color: Option<[f32; 3]>,
-    pub diffuse_color: Option<[f32; 3]>,
-    pub alpha: Option<f32>,
+    pub color: BrushNiColorProps,
+    pub alpha: BrushNiAlphaProps,
 }
 
 impl BrushNiMatProps {
     pub fn default() -> BrushNiMatProps {
         BrushNiMatProps {
-            emissive_color: None,
-            diffuse_color: None,
-            ambient_color: None,
-            alpha: None,
+            color: BrushNiColorProps::default(),
+            alpha: BrushNiAlphaProps::default(),
         }
     }
 }
@@ -99,22 +233,76 @@ impl BrushNiNode {
 
         let entity_props = map_data.get_entity_properties(entity_id);
 
-        ["ambient", "diffuse", "emissive"]
+        ["Ambient", "Diffuse", "Emissive"]
             .iter()
             .for_each(|color_type| {
-                if let Some(color) = entity_props.get(&format!("{}_color", color_type)) {
+                if let Some(color) = entity_props.get(&format!("Material_Color_{}", color_type)) {
                     let color_value = Some(Self::get_color(color));
                     match *color_type {
-                        "ambient" => node.mat_props.ambient_color = color_value,
-                        "diffuse" => node.mat_props.diffuse_color = color_value,
-                        "emissive" => node.mat_props.emissive_color = color_value,
+                        "ambient" => node.mat_props.color.ambient = color_value,
+                        "diffuse" => node.mat_props.color.diffuse = color_value,
+                        "emissive" => node.mat_props.color.emissive = color_value,
                         _ => unreachable!(),
                     }
                 }
             });
 
-        if let Some(value) = entity_props.get(&"material_alpha".to_string()) {
-            node.mat_props.alpha = Some(
+        [
+            "UseBlend",
+            "BlendSourceMode",
+            "BlendDestinationMode",
+            "TestEnable",
+            "TestFunction",
+            "TestThreshold",
+            "NoSort",
+        ]
+        .iter()
+        .for_each(|alpha_prop| {
+            if let Some(prop) = entity_props.get(&format!("Material_Alpha_{}", alpha_prop)) {
+                println!("Parsing alpha prop {prop}");
+                match *alpha_prop {
+                    "UseBlend" => {
+                        if let Ok(value) = prop.parse::<BrushUseAlpha>() {
+                            node.mat_props.alpha.use_blend = Some(value);
+                        }
+                    }
+                    "BlendSourceMode" => {
+                        if let Ok(value) = prop.parse::<BrushSourceBlendMode>() {
+                            node.mat_props.alpha.blend_source_mode = Some(value);
+                        }
+                    }
+                    "BlendDestinationMode" => {
+                        if let Ok(value) = prop.parse::<BrushDestinationBlendMode>() {
+                            node.mat_props.alpha.blend_destination_mode = Some(value);
+                        }
+                    }
+                    "TestEnable" => {
+                        if let Ok(value) = prop.parse::<BrushUseAlpha>() {
+                            node.mat_props.alpha.use_test = Some(value);
+                        }
+                    }
+                    "TestFunction" => {
+                        if let Ok(value) = prop.parse::<BrushAlphaTestFunction>() {
+                            node.mat_props.alpha.test_function = Some(value);
+                        }
+                    }
+                    "TestThreshold" => {
+                        if let Ok(value) = prop.parse::<u8>() {
+                            node.mat_props.alpha.test_threshold = Some(value);
+                        }
+                    }
+                    "NoSort" => {
+                        if let Ok(value) = prop.parse::<BrushNoSort>() {
+                            node.mat_props.alpha.no_sort = Some(value);
+                        }
+                    }
+                    _ => unreachable!(),
+                }
+            }
+        });
+
+        if let Some(value) = entity_props.get(&"Material_Alpha".to_string()) {
+            node.mat_props.alpha.opacity = Some(
                 value
                     .parse()
                     .expect("Failed to parse float value from material properties!"),

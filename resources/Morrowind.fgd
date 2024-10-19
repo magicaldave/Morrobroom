@@ -1,12 +1,70 @@
-@BaseClass = paintable
+@BaseClass = material
 [
-    emissive_color(color) : "Color emitted by the brush" : "1.0 0 1.0"
-    ambient_color(color) : "Ambient color of the brush" : "1.0 0 0"
-    diffuse_color(color) : "Diffuse color of the brush" : "0 1.0 0"
-    material_alpha(float) : "Material Transparency" : "1.0"
+    Material_Emissive_color(color) : "Color emitted by the brush" : "1.0 0 0"
+    Material_Ambient_color(color) : "Ambient color of the brush" : "0 1.0 0"
+    Material_Diffuse_color(color) : "Diffuse color of the brush" : "0 0 1.0"
+
+    Material_Alpha(float) : "Material Transparency" : "1.0"
+	Material_Alpha_UseBlend(choices) : "Use alpha blending for this brush" : 0 =
+    [
+        0 : "False"
+        1 : "True"
+    ]
+    Material_Alpha_BlendSourceMode(choices) : "Mode to use for alpha blending on the light source": 0 =
+    [
+        0 : "One"
+        2 : "Zero"
+        4 : "Source Color"
+        6 : "One Minus Source Color"
+        8 : "Destination Color"
+        10 : "One Minus Destination Color"
+        12 : "Source Alpha"
+        14 : "One Minus Source Alpha"
+        16 : "Destination Alpha"
+        18 : "One Minus Destination Alpha"
+        20 : "Source Alpha Saturate"
+    ]
+    Material_Alpha_BlendDestinationMode(choices) : "Mode to use for alpha blending on the light destination": 0 =
+    [
+        0 : "One"
+        32 : "Zero"
+        64 : "Source Color"
+        96 : "One Minus Source Color"
+        128 : "Destination Color"
+        160 : "One Minus Destination Color"
+        192 : "Source Alpha"
+        224 : "One Minus Source Alpha"
+        256 : "Destination Alpha"
+        288 : "One Minus Destination Alpha"
+        320 : "Source Alpha Saturate"
+    ]
+
+	Material_Alpha_TestEnable(choices) : "Use alpha testing for this brush" : 0 =
+    [
+        0 : "False"
+        512 : "True"
+    ]
+	Material_Alpha_TestFunction(choices) : "Use alpha testing for this brush" : 0 =
+    [
+        0 : "Always"
+        1024 : "Less"
+        2048 : "Equal"
+        3072 : "Less Than Or Equal"
+        4096 : "Greater Than"
+        5120 : "Not Equal"
+        6144 : "Greater Than Or Equal"
+        7168 : "Never"
+    ]
+    Material_Alpha_TestThreshold(float) : "Threshold to use against the background when alpha testing": "1.0"
+
+	Material_Alpha_NoSort(choices) : "Disable triangle sorting for this object" : 0 =
+    [
+        0 : "False"
+        8192 : "True"
+    ]
 ]
 
-@SolidClass base(paintable) = worldspawn : "World entity"
+@SolidClass base(material) = worldspawn : "World entity"
 [
 	FakeExterior(choices) : "Use sky for this cell" : 0 =
     [
@@ -41,7 +99,7 @@
 
 // Begin common classes
 
-@BaseClass base(paintable) = baseObject
+@BaseClass base(material) = baseObject
 [
     RefId(string) : "Ref Id for the object" : "agronian guy"
     Name(string)  : "Ingame readable name for the book" : "Tarhiel"
@@ -2082,15 +2140,15 @@
         ]
 ]
 
-@PointClass size(-32 -32 -32, 32 32 32) color (0 64 128) base(PointLightData) = Light_Point64: "64 Unit Light" []
+@PointClass size(-32 -32 -32, 32 32 32) iconsprite("Textures/light64.webp") base(PointLightData) = Light_Point64: "64 Unit Light" []
 
-@PointClass size(-32 -32 -32, 32 32 32) color (0 64 128) base(PointLightData) = Light_Point128: "128 Unit Light" [ Radius(int): "Light Radius" : 128 ]
+@PointClass size(-64 -64 -64, 64 64 64) iconsprite("Textures/light128.webp") base(PointLightData) = Light_Point128: "128 Unit Light" [ Radius(int): "Light Radius" : 128 ]
 
-@PointClass size(-32 -32 -32, 32 32 32) color (0 64 128) base(PointLightData) = Light_Point256: "256 Unit Light" [ Radius(int): "Light Radius" : 256 ]
+@PointClass size(-128 -128 -128, 128 128 128) iconsprite("Textures/light256.webp") base(PointLightData) = Light_Point256: "256 Unit Light" [ Radius(int): "Light Radius" : 256 ]
 
-@PointClass size(-32 -32 -32, 32 32 32) color (0 64 128) base(PointLightData) = Light_Point512: "512 Unit Light" [ Radius(int): "Light Radius" : 512 ]
+@PointClass size(-256 -256 -256, 256 256 256) iconsprite("Textures/light512.webp") base(PointLightData) = Light_Point512: "512 Unit Light" [ Radius(int): "Light Radius" : 512 ]
 
-@PointClass size(-32 -32 -32, 32 32 32) color (0 64 128) base(PointLightData) = Light_Point1024: "1024 Unit Light" [ Radius(int): "Light Radius" : 1024 ]
+@PointClass size(-512 -512 -512, 512 512 512) iconsprite("Textures/light1024.webp") base(PointLightData) = Light_Point1024: "1024 Unit Light" [ Radius(int): "Light Radius" : 1024 ]
 
 @SolidClass base(baseObject) = world_Container : "Container type" [
     Script(string) : "Id of the script used by the object. Optional. Be warned that all instances of this refId will share the script." : "fallingScript"
