@@ -270,7 +270,7 @@ fn main() {
             .as_str()
         {
             light if light.contains("Light_Point") => {
-                let mut ref_id = format!("{map_dir}-pointlight-{lowest_available_index}");
+                let mut ref_id = format!("{map_dir}-PL-{lowest_available_index}");
                 ref_id = ref_id[..min(ref_id.len(), 32)].to_string();
 
                 let translation: SV3 = {

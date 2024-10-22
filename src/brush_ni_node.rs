@@ -236,12 +236,12 @@ impl BrushNiNode {
         ["Ambient", "Diffuse", "Emissive"]
             .iter()
             .for_each(|color_type| {
-                if let Some(color) = entity_props.get(&format!("Material_Color_{}", color_type)) {
+                if let Some(color) = entity_props.get(&format!("Material_{}_color", color_type)) {
                     let color_value = Some(Self::get_color(color));
                     match *color_type {
-                        "ambient" => node.mat_props.color.ambient = color_value,
-                        "diffuse" => node.mat_props.color.diffuse = color_value,
-                        "emissive" => node.mat_props.color.emissive = color_value,
+                        "Ambient" => node.mat_props.color.ambient = color_value,
+                        "Diffuse" => node.mat_props.color.diffuse = color_value,
+                        "Emissive" => node.mat_props.color.emissive = color_value,
                         _ => unreachable!(),
                     }
                 }
@@ -313,7 +313,7 @@ impl BrushNiNode {
             let texture_id = map_data.geomap.face_textures.get(face_id).unwrap();
             let texture_name = map_data.geomap.textures.get(texture_id).unwrap();
 
-            if texture_name == "skip" || texture_name.starts_with("skip_") {
+            if texture_name == "skip" || texture_name.contains("skip_") {
                 continue;
             };
 
