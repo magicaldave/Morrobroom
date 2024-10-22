@@ -103,6 +103,7 @@
 [
     RefId(string) : "Ref Id for the object" : "agronian guy"
     Name(string)  : "Ingame readable name for the book" : "Tarhiel"
+    mangle(string): "Object rotation, not meant to be adjusted in the property view"
 ]
 
 @BaseClass base(baseObject) = Referenceable : "Base Entity"
@@ -111,7 +112,6 @@
     Icon(string) : "Ingame icon used by the object. Visible within TrenchBroom. Be sure to include the relative path to the icon." : "tx_goldicon.tga"
     Value(int) : "Gold value of the object ingame" : 420
     Weight(float): "Weight of the object in Todd units." : "0.0"
-    mangle(string): "Object rotation, not meant to be adjusted in the property view"
 ]
 
 @BaseClass base(Referenceable) = Wearable : "Wearable"
