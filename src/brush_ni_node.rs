@@ -259,7 +259,6 @@ impl BrushNiNode {
         .iter()
         .for_each(|alpha_prop| {
             if let Some(prop) = entity_props.get(&format!("Material_Alpha_{}", alpha_prop)) {
-                println!("Parsing alpha prop {prop}");
                 match *alpha_prop {
                     "UseBlend" => {
                         if let Ok(value) = prop.parse::<BrushUseAlpha>() {

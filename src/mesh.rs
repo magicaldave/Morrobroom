@@ -221,8 +221,6 @@ impl Mesh {
                 alpha_prop.test_ref = props.alpha.test_threshold.unwrap_or(128);
             }
 
-            dbg!(props.alpha, &alpha_prop.flags);
-
             let alpha_link = self.stream.insert(alpha_prop);
 
             self.stream
