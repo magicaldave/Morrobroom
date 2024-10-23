@@ -335,7 +335,7 @@ impl BrushNiNode {
 
             let mut use_inverted_tris = false;
 
-            if content_flags & surfaces::NiBroomContent::Sky as u32 == 1 {
+            if content_flags & surfaces::NiBroomContent::InvertFaces as u32 == 1 {
                 use_inverted_tris = true;
             }
 
@@ -381,8 +381,13 @@ panic!("Critical error: Missing inverted face triangle indices for face_id: {:?}
                 .expect("Unable to collect face UVs for {face_id}");
 
             if texture_name != "clip" {
-                node.normals
-                    .extend(&*map_data.flat_normals.get(&face_id).unwrap());
+                node.normals.extend(
+                    if surface_flags & surfaces::NiBroomSurface::SmoothShading as u32 == 0 {
+                        &*map_data.flat_normals.get(&face_id).unwrap()
+                    } else {
+                        &*map_data.smooth_normals.get(&face_id).unwrap()
+                    },
+                );
                 node.uv_sets.extend(*uv_sets);
 
                 node.vis_verts.extend(*vertices);

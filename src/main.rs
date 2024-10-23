@@ -220,7 +220,7 @@ fn main() {
                         flags: esp::ObjectFlags::default(),
                     });
                 }
-                "func_group" => {
+                "func_group" | "world_Detail" => {
                     processed_base_objects.insert(ref_id.clone());
                     mesh.game_object = TES3Object::Static(Static {
                         id: ref_id.to_owned(),

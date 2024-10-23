@@ -1,3 +1,12 @@
+@BaseClass = phong
+[
+    Material_SmoothShading(choices) : "Use smooth shading on this brush" : 1 =
+    [
+        0 : "False"
+        1 : "True"
+    ]
+]
+
 @BaseClass = material
 [
     Material_Emissive_color(color) : "Color emitted by the brush" : "1.0 0 0"
@@ -62,6 +71,14 @@
         0 : "False"
         8192 : "True"
     ]
+]
+
+@SolidClass base(material, phong) = world_Detail [
+
+    RefId(string) : "Ref Id for the object" : "agronian guy"
+    Name(string)  : "Ingame readable name for the book" : "Tarhiel"
+    mangle(string): "Object rotation, not meant to be adjusted in the property view"
+
 ]
 
 @SolidClass base(material) = worldspawn : "World entity"

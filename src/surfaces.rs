@@ -5,10 +5,9 @@ pub mod colors {}
 
 pub enum NiBroomSurface {
     NoClip = 1,
-    // Phong = 2,
-    // Invert = 4,
+    SmoothShading = 2,
 }
 
 pub enum NiBroomContent {
-    Sky = 1,
+    InvertFaces = 1,
 }
