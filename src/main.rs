@@ -316,14 +316,18 @@ fn main() {
     }
 
     if let Some(cell) = cell {
+        processed_base_objects.insert(cell.editor_id().to_string());
         created_objects.push(esp::TES3Object::Cell(cell));
     }
 
     let fail_str = format!("Saving {plugin_name} failed!");
 
-    plugin
-        .objects
-        .retain(|obj| !processed_base_objects.contains(&obj.editor_id().to_string()));
+    plugin.objects.retain(|obj| {
+        !processed_base_objects.contains(&obj.editor_id().to_string())
+            && !obj
+                .editor_id()
+                .contains(&format!("{map_dir}-PL").to_string())
+    });
     plugin.objects.extend(created_objects);
     create_header_if_missing(&mut plugin);
     plugin.sort_objects();
