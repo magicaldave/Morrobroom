@@ -254,6 +254,7 @@ pub fn ingredient(
 
 pub fn point_light(
     entity_props: &HashMap<&String, &String>,
+    scale_mode: &f32,
     radius: u32,
     ref_id: &str,
 ) -> TES3Object {
@@ -266,12 +267,13 @@ pub fn point_light(
             weight: 0.0,
             value: 0,
             time: 0,
-            radius: match entity_props.get(&"Radius".to_string()) {
+            radius: (match entity_props.get(&"Radius".to_string()) {
                 Some(radius_override) => radius_override
                     .parse()
                     .expect(&("Invalid point light radius override on ".to_owned() + &ref_id)),
                 None => radius,
-            },
+            } as f32
+                * scale_mode) as u32,
             flags: LightFlags::from_bits(
                 get_prop("LightFlags", entity_props)
                     .parse::<u32>()
@@ -286,6 +288,7 @@ pub fn point_light(
 
 pub fn light(
     entity_props: &HashMap<&String, &String>,
+    scale_mode: &f32,
     ref_id: &str,
     mesh_name: &str,
 ) -> TES3Object {
@@ -307,9 +310,10 @@ pub fn light(
             time: get_prop("Time", entity_props)
                 .parse::<i32>()
                 .unwrap_or_default(),
-            radius: get_prop("Radius", entity_props)
+            radius: (get_prop("Radius", entity_props)
                 .parse::<u32>()
-                .unwrap_or_default(),
+                .unwrap_or_default() as f32
+                * scale_mode) as u32,
             flags: LightFlags::from_bits(
                 get_prop("LightFlags", entity_props)
                     .parse::<u32>()

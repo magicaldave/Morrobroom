@@ -202,7 +202,8 @@ fn main() {
                 }
                 "item_Light" => {
                     // Keep in mind this is for lights made from brushes. We also need to support point lights, so that they don't necessarily have to be associated with an object.
-                    mesh.game_object = game_object::light(&prop_map, &ref_id, &mesh_name);
+                    mesh.game_object =
+                        game_object::light(&prop_map, scale_mode, &ref_id, &mesh_name);
                 }
                 "worldspawn" => {
                     let mut local_cell = game_object::cell(&prop_map);
@@ -299,7 +300,12 @@ fn main() {
                         "All point light types should have a radius encoded in their classnames!",
                     );
 
-                created_objects.push(game_object::point_light(&prop_map, radius, ref_id.as_str()));
+                created_objects.push(game_object::point_light(
+                    &prop_map,
+                    scale_mode,
+                    radius,
+                    ref_id.as_str(),
+                ));
 
                 append_cell_reference(
                     &mut used_indices,
