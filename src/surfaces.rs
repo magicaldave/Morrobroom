@@ -6,8 +6,7 @@ pub mod colors {}
 pub enum NiBroomSurface {
     NoClip = 1,
     SmoothShading = 2,
+    InvertFaces = 4,
 }
 
-pub enum NiBroomContent {
-    InvertFaces = 1,
-}
+pub enum NiBroomContent {}

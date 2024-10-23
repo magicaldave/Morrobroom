@@ -316,7 +316,7 @@ impl BrushNiNode {
                 continue;
             };
 
-            let (content_flags, mut surface_flags, _value) = match &map_data
+            let (_content_flags, mut surface_flags, _value) = match &map_data
                 .geomap
                 .face_extensions
                 .get(face_id)
@@ -332,27 +332,17 @@ impl BrushNiNode {
 
             let vertices = &map_data.face_vertices.get(&face_id).unwrap();
 
-            let mut use_inverted_tris = false;
-
-            if content_flags & surfaces::NiBroomContent::InvertFaces as u32 == 1 {
-                use_inverted_tris = true;
-            }
-
-            let mut indices = if use_inverted_tris {
+            let indices = if surface_flags & surfaces::NiBroomSurface::InvertFaces as u32 != 0 {
                 map_data.inverted_face_tri_indices.get(&face_id).unwrap_or_else(|| {
 panic!("Critical error: Missing inverted face triangle indices for face_id: {:?}", face_id)
-}).clone()
+})
             } else {
-                map_data
-                    .face_tri_indices
-                    .get(&face_id)
-                    .unwrap_or_else(|| {
-                        panic!(
-                            "Critical error: Missing face triangle indices for face_id: {:?}",
-                            face_id
-                        )
-                    })
-                    .clone()
+                map_data.face_tri_indices.get(&face_id).unwrap_or_else(|| {
+                    panic!(
+                        "Critical error: Missing face triangle indices for face_id: {:?}",
+                        face_id
+                    )
+                })
             };
 
             // We can't do fuzzier matches on this, so,
@@ -367,9 +357,6 @@ panic!("Critical error: Missing inverted face triangle indices for face_id: {:?}
                 || texture_name.to_ascii_lowercase().contains("lava")
                 || texture_name.to_ascii_lowercase().contains("mwat")
             {
-                let inverted_indices = map_data.inverted_face_tri_indices.get(&face_id).unwrap();
-                indices.extend_from_slice(inverted_indices);
-
                 surface_flags |= surfaces::NiBroomSurface::NoClip as u32;
                 println!("{face_id} interpreted as liquid")
             }
