@@ -257,6 +257,7 @@ pub fn point_light(entity_props: &HashMap<&String, &String>, ref_id: &str) -> TE
         id: ref_id.to_owned(),
         script: get_prop("Script", entity_props),
         sound: get_prop("Sound", entity_props),
+        mesh: get_prop("Model", entity_props),
         data: LightData {
             weight: 0.0,
             value: 0,

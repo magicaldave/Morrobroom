@@ -171,7 +171,10 @@ fn main() {
             processed_base_objects.insert(ref_id.to_string());
         }
 
-        let mesh_name = format!("{}/{}.nif", map_dir, ref_id);
+        let mesh_name = match prop_map.get(&"Model".to_string()) {
+            Some(mesh_name) => mesh_name.to_string(),
+            None => format!("{}/{}.nif", map_dir, ref_id),
+        };
 
         // We create the base record for the objects here.
         match prop_map.get(&"classname".to_string()) {

@@ -104,6 +104,7 @@
     RefId(string) : "Ref Id for the object" : "agronian guy"
     Name(string)  : "Ingame readable name for the book" : "Tarhiel"
     mangle(string): "Object rotation, not meant to be adjusted in the property view"
+    Model(string) : "Model used by the gameobject. Optional. Uses the current brush if empty."
 ]
 
 @BaseClass base(baseObject) = Referenceable : "Base Entity"
