@@ -2193,3 +2193,87 @@
     Item8_Id(string) : "Ref Id of contained object"
     Item8_Count(integer): "Number of contained instances" : 1
 ]
+
+
+@PointClass = world_CreatureList : "Leveled Creature List" [
+
+    RefId(string) : "Ref Id for the object" : "agronian guy"
+    Chance_None(integer) : "Chance nothing will spawn" : 0
+	Spawn_From_All_Levels(choices) : "Use alpha blending for this brush" : 0 =
+    [
+        0 : "False"
+        1 : "True"
+    ]
+
+    Creature_1_Id(string) : "Ref Id of contained creature"
+    Creature_1_PlayerLevel(integer): "Player level required to spawn this instance" : 1
+
+    Creature_2_Id(string) : "Ref Id of contained creature"
+    Creature_2_PlayerLevel(integer): "Player level required to spawn this instance" : 1
+
+    Creature_3_Id(string) : "Ref Id of contained creature"
+    Creature_3_PlayerLevel(integer): "Player level required to spawn this instance" : 1
+
+    Creature_4_Id(string) : "Ref Id of contained creature"
+    Creature_4_PlayerLevel(integer): "Player level required to spawn this instance" : 1
+
+    Creature_5_Id(string) : "Ref Id of contained creature"
+    Creature_5_PlayerLevel(integer): "Player level required to spawn this instance" : 1
+
+    Creature_6_Id(string) : "Ref Id of contained creature"
+    Creature_6_PlayerLevel(integer): "Player level required to spawn this instance" : 1
+
+    Creature_7_Id(string) : "Ref Id of contained creature"
+    Creature_7_PlayerLevel(integer): "Player level required to spawn this instance" : 1
+
+    Creature_8_Id(string) : "Ref Id of contained creature"
+    Creature_8_PlayerLevel(integer): "Player level required to spawn this instance" : 1
+
+    Creature_9_Id(string) : "Ref Id of contained creature"
+    Creature_9_PlayerLevel(integer): "Player level required to spawn this instance" : 1
+
+    Creature_10_Id(string) : "Ref Id of contained creature"
+    Creature_10_PlayerLevel(integer): "Player level required to spawn this instance" : 1
+]
+
+
+@PointClass = world_ItemList : "Leveled Item List" [
+
+    RefId(string) : "Ref Id for the object" : "agronian guy"
+    Chance_None(integer) : "Chance nothing will spawn" : 0
+	Spawn_From_All_Levels(choices) : "Use alpha blending for this brush" : 0 =
+    [
+        0 : "False"
+        1 : "True"
+    ]
+
+    Item_1_Id(string) : "Ref Id of contained item"
+    Item_1_PlayerLevel(integer): "Player level required to spawn this instance" : 1
+
+    Item_2_Id(string) : "Ref Id of contained item"
+    Item_2_PlayerLevel(integer): "Player level required to spawn this instance" : 1
+
+    Item_3_Id(string) : "Ref Id of contained item"
+    Item_3_PlayerLevel(integer): "Player level required to spawn this instance" : 1
+
+    Item_4_Id(string) : "Ref Id of contained item"
+    Item_4_PlayerLevel(integer): "Player level required to spawn this instance" : 1
+
+    Item_5_Id(string) : "Ref Id of contained item"
+    Item_5_PlayerLevel(integer): "Player level required to spawn this instance" : 1
+
+    Item_6_Id(string) : "Ref Id of contained item"
+    Item_6_PlayerLevel(integer): "Player level required to spawn this instance" : 1
+
+    Item_7_Id(string) : "Ref Id of contained item"
+    Item_7_PlayerLevel(integer): "Player level required to spawn this instance" : 1
+
+    Item_8_Id(string) : "Ref Id of contained item"
+    Item_8_PlayerLevel(integer): "Player level required to spawn this instance" : 1
+
+    Item_9_Id(string) : "Ref Id of contained item"
+    Item_9_PlayerLevel(integer): "Player level required to spawn this instance" : 1
+
+    Item_10_Id(string) : "Ref Id of contained item"
+    Item_10_PlayerLevel(integer): "Player level required to spawn this instance" : 1
+]

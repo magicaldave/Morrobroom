@@ -4,7 +4,8 @@ use tes3::esp::{
     Activator, Alchemy, AlchemyData, AlchemyFlags, Apparatus, ApparatusData, Armor, ArmorData,
     AtmosphereData, AttributeId, AttributeId2, BipedObject, Book, BookData, BookType, Cell,
     CellFlags, Container, ContainerFlags, Effect, EffectId, EffectId2, EffectRange, Ingredient,
-    IngredientData, Light, LightData, LightFlags, ObjectFlags, SkillId, SkillId2, TES3Object,
+    IngredientData, LeveledCreature, LeveledCreatureFlags, LeveledItem, LeveledItemFlags, Light,
+    LightData, LightFlags, ObjectFlags, SkillId, SkillId2, TES3Object,
 };
 
 pub fn activator(
@@ -197,6 +198,40 @@ pub fn container(
         )
         .expect("Invalid Potion Flags!"),
         inventory: collect_contained_objects(entity_props),
+    })
+}
+
+pub fn creature_list(entity_props: &HashMap<&String, &String>, ref_id: &str) -> TES3Object {
+    TES3Object::LeveledCreature(LeveledCreature {
+        flags: ObjectFlags::default(),
+        id: ref_id.to_owned(),
+        chance_none: entity_props
+            .get(&"Chance_None".to_string())
+            .map_or("0", |v| v)
+            .parse::<u8>()
+            .unwrap_or_default(),
+        leveled_creature_flags: match entity_props.get(&"Spawn_From_All_Levels".to_string()) {
+            Some(value) if *value == "1" => LeveledCreatureFlags::CALCULATE_FROM_ALL_LEVELS,
+            Some(_) | None => LeveledCreatureFlags::empty(),
+        },
+        creatures: collect_list_creatures(&entity_props),
+    })
+}
+
+pub fn item_list(entity_props: &HashMap<&String, &String>, ref_id: &str) -> TES3Object {
+    TES3Object::LeveledItem(LeveledItem {
+        flags: ObjectFlags::default(),
+        id: ref_id.to_owned(),
+        chance_none: entity_props
+            .get(&"Chance_None".to_string())
+            .map_or("0", |v| v)
+            .parse::<u8>()
+            .unwrap_or_default(),
+        leveled_item_flags: match entity_props.get(&"Spawn_From_All_Levels".to_string()) {
+            Some(value) if *value == "1" => LeveledItemFlags::CALCULATE_FROM_ALL_LEVELS,
+            Some(_) | None => LeveledItemFlags::empty(),
+        },
+        items: collect_list_items(&entity_props),
     })
 }
 
@@ -482,6 +517,46 @@ fn collect_contained_objects(
                     .expect("Cannot fail parsing a default-initialized integer");
                 let object_id = crate::esp::FixedString::<32>(contained_id.to_string());
                 contained_objects.push((item_count, object_id))
+            }
+            None => continue,
+        }
+    }
+
+    contained_objects
+}
+
+fn collect_list_creatures(prop_map: &HashMap<&String, &String>) -> Vec<(String, u16)> {
+    let mut contained_objects = Vec::new();
+
+    for count in 1..25 {
+        match prop_map.get(&format!("Creature_{count}_Id")) {
+            Some(contained_id) => {
+                let level_required: u16 = prop_map
+                    .get(&format!("Creature_{count}_PlayerLevel"))
+                    .map_or("1", |v| v)
+                    .parse()
+                    .expect("Cannot fail parsing a default-initialized integer");
+                contained_objects.push((contained_id.to_string(), level_required))
+            }
+            None => continue,
+        }
+    }
+
+    contained_objects
+}
+
+fn collect_list_items(prop_map: &HashMap<&String, &String>) -> Vec<(String, u16)> {
+    let mut contained_objects = Vec::new();
+
+    for count in 1..25 {
+        match prop_map.get(&format!("Item_{count}_Id")) {
+            Some(contained_id) => {
+                let level_required: u16 = prop_map
+                    .get(&format!("Item_{count}_PlayerLevel"))
+                    .map_or("1", |v| v)
+                    .parse()
+                    .expect("Cannot fail parsing a default-initialized integer");
+                contained_objects.push((contained_id.to_string(), level_required))
             }
             None => continue,
         }

@@ -277,19 +277,6 @@ fn main() {
                 let mut ref_id = format!("{map_dir}-PL-{lowest_available_index}");
                 ref_id = ref_id[..min(ref_id.len(), 32)].to_string();
 
-                let translation: SV3 = {
-                    let coords: Vec<f32> = prop_map
-                        .get(&"origin".to_string())
-                        .expect("All point entities must have an origin")
-                        .split_whitespace()
-                        .map(|s| s.parse::<f32>().expect("Invalid coordinate"))
-                        .collect();
-
-                    assert_eq!(coords.len(), 3, "Origin must have exactly 3 coordinates");
-
-                    SV3::new(coords[0], coords[1], coords[2]) * (*scale_mode)
-                };
-
                 let radius: u32 = light
                     .chars()
                     .skip_while(|c| !c.is_digit(10))
@@ -311,9 +298,45 @@ fn main() {
                     &mut used_indices,
                     &mut cell,
                     ref_id,
-                    translation,
+                    point_entity_position(scale_mode, &prop_map),
                     [0.0, 0.0, 0.0],
                 );
+            }
+            "world_CreatureList" => {
+                let ref_id = match prop_map.get(&"RefId".to_string()) {
+                    Some(ref_id) => ref_id[..min(ref_id.len(), 32)].to_string(),
+                    None => panic!(
+                        "RefIds are mandatory for all point entities, failed on creature list, entity ID: {}",
+                        entity_id
+                    ),
+                };
+
+                if !processed_base_objects.contains(&ref_id) {
+                    created_objects.push(game_object::creature_list(&prop_map, ref_id.as_str()));
+                    processed_base_objects.insert(ref_id.to_string());
+                }
+
+                append_cell_reference(
+                    &mut used_indices,
+                    &mut cell,
+                    ref_id,
+                    point_entity_position(scale_mode, &prop_map),
+                    [0.0, 0.0, 0.0],
+                );
+            }
+            "world_ItemList" => {
+                let ref_id = match prop_map.get(&"RefId".to_string()) {
+                    Some(ref_id) => ref_id[..min(ref_id.len(), 32)].to_string(),
+                    None => panic!(
+                        "RefIds are mandatory for all point entities, failed on item list, entity ID: {}",
+                        entity_id
+                    ),
+                };
+
+                if !processed_base_objects.contains(&ref_id) {
+                    created_objects.push(game_object::item_list(&prop_map, ref_id.as_str()));
+                    processed_base_objects.insert(ref_id.to_string());
+                }
             }
             class => {
                 println!("Unidentified point entity class: {class}")
@@ -340,6 +363,19 @@ fn main() {
     plugin.save_path(&plugin_name).expect(&fail_str);
 
     println!("Wrote {plugin_name} to disk successfully.");
+}
+
+fn point_entity_position(scale_mode: &f32, prop_map: &HashMap<&String, &String>) -> SV3 {
+    let coords: Vec<f32> = prop_map
+        .get(&"origin".to_string())
+        .expect("All point entities must have an origin")
+        .split_whitespace()
+        .map(|s| s.parse::<f32>().expect("Invalid coordinate"))
+        .collect();
+
+    assert_eq!(coords.len(), 3, "Origin must have exactly 3 coordinates");
+
+    SV3::new(coords[0], coords[1], coords[2]) * (*scale_mode)
 }
 
 fn lowest_available_index(used_indices: &HashSet<u32>) -> u32 {
