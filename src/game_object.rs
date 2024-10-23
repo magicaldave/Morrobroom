@@ -252,7 +252,11 @@ pub fn ingredient(
     })
 }
 
-pub fn point_light(entity_props: &HashMap<&String, &String>, ref_id: &str) -> TES3Object {
+pub fn point_light(
+    entity_props: &HashMap<&String, &String>,
+    radius: u32,
+    ref_id: &str,
+) -> TES3Object {
     TES3Object::Light(Light {
         id: ref_id.to_owned(),
         script: get_prop("Script", entity_props),
@@ -262,7 +266,12 @@ pub fn point_light(entity_props: &HashMap<&String, &String>, ref_id: &str) -> TE
             weight: 0.0,
             value: 0,
             time: 0,
-            radius: get_prop("Radius", entity_props).parse().unwrap_or(64),
+            radius: match entity_props.get(&"Radius".to_string()) {
+                Some(radius_override) => radius_override
+                    .parse()
+                    .expect(&("Invalid point light radius override on ".to_owned() + &ref_id)),
+                None => radius,
+            },
             flags: LightFlags::from_bits(
                 get_prop("LightFlags", entity_props)
                     .parse::<u32>()

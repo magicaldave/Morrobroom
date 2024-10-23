@@ -289,7 +289,17 @@ fn main() {
                     SV3::new(coords[0], coords[1], coords[2]) * (*scale_mode)
                 };
 
-                created_objects.push(game_object::point_light(&prop_map, ref_id.as_str()));
+                let radius: u32 = light
+                    .chars()
+                    .skip_while(|c| !c.is_digit(10))
+                    .take_while(|c| c.is_digit(10))
+                    .collect::<String>()
+                    .parse()
+                    .expect(
+                        "All point light types should have a radius encoded in their classnames!",
+                    );
+
+                created_objects.push(game_object::point_light(&prop_map, radius, ref_id.as_str()));
 
                 append_cell_reference(
                     &mut used_indices,
