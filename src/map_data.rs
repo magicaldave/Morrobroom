@@ -131,18 +131,20 @@ impl MapData {
     pub fn find_vfs_texture(name: &str, config: &Ini) -> Option<String> {
         let extensions = ["dds", "tga", "png"];
 
-        Some(
-            extensions
-                .iter()
-                .flat_map(|extension| {
-                    println!("Searching for texture: {name}");
-                    find_file(config, format!("Textures/{}.{}", name, extension).as_str())
-                })
-                .next()
-                .expect("Texture not found! This map is using a texture which isn't in your openmw vfs!")
-                .to_string_lossy()
-                .to_string(),
-        )
+        extensions
+         .iter()
+         .find_map(|extension| {
+             let full_name = format!("Textures/{}.{}", name, extension);
+             println!("Searching for texture: {}", full_name);
+             match find_file(config, full_name.as_str()) {
+                 std::result::Result::Ok(path) => Some(path.to_string_lossy().to_string()),
+                 Err(_) => { None }
+             }
+         })
+         .or_else(|| {
+             eprintln!("ERROR: Texture not found! This map is using a texture which isn't in your OpenMW VFS: {}.[dds/tga/png]", name);
+             None
+         })
     }
 
     pub fn find_textures_in_vfs(textures: &HashSet<String>) -> HashSet<String> {
