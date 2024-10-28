@@ -12,8 +12,13 @@ use std::{
     fs,
 };
 
+use crate::Mesh;
+
+const GRID_SIZE: u8 = 128;
+
 pub struct MapData {
     pub geomap: GeoMap,
+    pub face_grid: HashMap<[i32; 3], Vec<shambler::face::FaceId>>,
     pub face_vertices: FaceVertices,
     pub face_tri_indices: FaceTriangleIndices,
     pub inverted_face_tri_indices: FaceTriangleIndices,
@@ -110,8 +115,32 @@ impl MapData {
             &shambler::texture::texture_sizes(&textures_with_paths, texture_sizes),
         );
 
+        let face_grid: HashMap<[i32; 3], Vec<shambler::face::FaceId>> = geomap
+            .brush_faces
+            .iter()
+            .flat_map(|(_, brush_faces)| {
+                brush_faces.iter().map(|face_id| {
+                    let centroid = Mesh::centroid(
+                        face_vertices
+                            .get(face_id)
+                            .expect("Face vertices should always be valid"),
+                    );
+                    let grid_position = [
+                        (centroid.x.round() / GRID_SIZE as f32).floor() as i32,
+                        (centroid.y.round() / GRID_SIZE as f32).floor() as i32,
+                        (centroid.z.round() / GRID_SIZE as f32).floor() as i32,
+                    ];
+                    (grid_position, *face_id)
+                })
+            })
+            .fold(HashMap::new(), |mut acc, (grid_pos, face_id)| {
+                acc.entry(grid_pos).or_insert_with(Vec::new).push(face_id);
+                acc
+            });
+
         MapData {
             geomap,
+            face_grid,
             face_vertices,
             face_tri_indices,
             inverted_face_tri_indices,
