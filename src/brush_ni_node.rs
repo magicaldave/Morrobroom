@@ -201,10 +201,12 @@ impl BrushNiNode {
     ) -> Vec<BrushNiNode> {
         let mut face_nodes = Vec::new();
 
-        let faces_with_textures = Self::collect_faces_with_textures(brush_id, map_data);
+        let faces_with_textures = Self::collect_faces_with_textures(&brush_id, map_data);
 
         for face_set in faces_with_textures {
-            face_nodes.push(Self::node_from_faces(&face_set, &map_data, entity_id));
+            face_nodes.push(Self::node_from_faces(
+                &face_set, &map_data, entity_id, brush_id,
+            ));
         }
 
         for node in &mut face_nodes {
@@ -228,6 +230,7 @@ impl BrushNiNode {
         faces: &Vec<FaceId>,
         map_data: &MapData,
         entity_id: &EntityId,
+        brush_id: &BrushId,
     ) -> BrushNiNode {
         let mut node = BrushNiNode::default();
 
@@ -339,8 +342,9 @@ panic!("Critical error: Missing inverted face triangle indices for face_id: {:?}
             } else {
                 map_data.face_tri_indices.get(&face_id).unwrap_or_else(|| {
                     panic!(
-                        "Critical error: Missing face triangle indices for face_id: {:?}",
-                        face_id
+                        "Critical error: Missing face triangle indices for face_id: {:?} on brush: {:?}",
+                        face_id,
+                        brush_id
                     )
                 })
             };
