@@ -5,7 +5,8 @@ use tes3::esp::{
     AtmosphereData, AttributeId, AttributeId2, BipedObject, Book, BookData, BookType, Cell,
     CellFlags, Container, ContainerFlags, Effect, EffectId, EffectId2, EffectRange, Ingredient,
     IngredientData, LeveledCreature, LeveledCreatureFlags, LeveledItem, LeveledItemFlags, Light,
-    LightData, LightFlags, ObjectFlags, SkillId, SkillId2, TES3Object,
+    LightData, LightFlags, MiscItem, MiscItemData, MiscItemFlags, ObjectFlags, SkillId, SkillId2,
+    TES3Object,
 };
 
 pub fn activator(
@@ -356,6 +357,31 @@ pub fn light(
             )
             .expect("This cannot fail"), // Famous last words
             color: get_color(&get_prop("light_color", entity_props)),
+        },
+    })
+}
+
+pub fn misc(entity_props: &HashMap<&String, &String>, ref_id: &str, mesh_name: &str) -> TES3Object {
+    TES3Object::MiscItem(MiscItem {
+        flags: ObjectFlags::default(),
+        id: ref_id.to_owned(),
+        name: get_prop("Name", entity_props),
+        script: get_prop("Script", entity_props),
+        icon: get_prop("Icon", entity_props),
+        mesh: mesh_name.to_owned(),
+        data: MiscItemData {
+            weight: get_prop("Weight", entity_props)
+                .parse::<f32>()
+                .unwrap_or_default(),
+            value: get_prop("Value", entity_props)
+                .parse::<u32>()
+                .unwrap_or_default(),
+            flags: MiscItemFlags::from_bits(
+                get_prop("MiscFlags", entity_props)
+                    .parse::<u32>()
+                    .unwrap_or_default(),
+            )
+            .expect("Invalid Potion Flags!"),
         },
     })
 }

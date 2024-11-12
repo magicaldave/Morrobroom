@@ -2049,6 +2049,8 @@
     Effect_8_Magnitude(int) : "Effect 8 Magnitude" : "0"
 ]
 
+@SolidClass base(Referenceable) = item_Misc : "Base Miscellaneous Entity" []
+
 @SolidClass base(Referenceable) = item_Apparatus : "Base Apparatus Entity"
 [
     Quality(float) : "Strength for creating alchemy ingredients. Multiplicative, so suggested to stay between 1 and 0." : "0.0"

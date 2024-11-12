@@ -205,6 +205,9 @@ fn main() {
                     mesh.game_object =
                         game_object::light(&prop_map, scale_mode, &ref_id, &mesh_name);
                 }
+                "item_Misc" => {
+                    mesh.game_object = game_object::misc(&prop_map, &ref_id, &mesh_name);
+                }
                 "worldspawn" => {
                     let mut local_cell = game_object::cell(&prop_map);
                     if local_cell.name.is_empty() {
