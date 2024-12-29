@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
   push:
   pull_request:
-    branches: [ v2.1 ]
+    branches: [v2.1]
 
 jobs:
   build:
@@ -32,7 +32,7 @@ jobs:
         run: cargo build --release
 
       - name: compress
-        run: tar -acf ${{ matrix.archive }} -C ./target/release/ ${{ matrix.binary }}
+        run: 7z ${{ matrix.archive }} ./target/release/${{ matrix.binary }}
 
       - name: upload
         uses: softprops/action-gh-release@v1
