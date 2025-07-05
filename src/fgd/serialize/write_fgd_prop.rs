@@ -8,12 +8,9 @@ use tes3::esp::{
     Weapon,
 };
 
-use crate::fgd::{
-    self,
-    serialize::{
-        generate_rgb_from_id, std_write_fgd::STDWriteFGD, write_light_point_class,
-        write_object_flags, write_point_class, write_unplaceable_point_class,
-    },
+use super::{
+    encode_fgd_token, generate_rgb_from_id, std_write_fgd::STDWriteFGD, write_light_point_class,
+    write_object_flags, write_point_class, write_unplaceable_point_class,
 };
 
 pub static LEVC_WIDTH: i32 = 16;
@@ -144,7 +141,7 @@ impl WriteFGDProp for Activator {
 
         "Plugin".write_fgd(fgd_string, "", parent_plugin)?;
         "Model".write_fgd(fgd_string, "", &self.mesh)?;
-        "Name".write_fgd(fgd_string, "", &self.name)?;
+        "Name".write_fgd(fgd_string, "", &encode_fgd_token(&self.name))?;
         "Script".write_fgd(fgd_string, "", &self.script)?;
         write_object_flags(fgd_string, &self.flags)?;
 
@@ -184,11 +181,12 @@ mod test_activator_fgd {
         assert!(!out.contains("static_doorwood01"));
         assert!(out.trim_end().ends_with(']'));
 
+        // Explicit equality checks catch instances where invalid strings should be accounted for
         let expected = r#"@PointClass base(world_Base) color(255 255 255) = activator_doorwood01
 [
     Plugin(string): "": "activ_test.esp"
     Model(string): "": "meshes\d\door_wood01.nif"
-    Name(string): "": "Test Door"
+    Name(string): "": "Test_x20_Door"
     Script(string): "": "door_open_script"
     ObjectFlags(string): "": ""
 ]
@@ -223,7 +221,7 @@ impl WriteFGDProp for Ingredient {
         "Plugin".write_fgd(fgd_string, "", parent_plugin)?;
         "Model".write_fgd(fgd_string, "", &self.mesh)?;
         "Script".write_fgd(fgd_string, "", &self.script)?;
-        "Name".write_fgd(fgd_string, "", &self.name)?;
+        "Name".write_fgd(fgd_string, "", &encode_fgd_token(&self.name))?;
         write_object_flags(fgd_string, &self.flags)?;
 
         // Then numeric
@@ -432,7 +430,7 @@ impl WriteFGDProp for Weapon {
         "Plugin".write_fgd(fgd_string, "", parent_plugin)?;
         "Model".write_fgd(fgd_string, "", &self.mesh)?;
         "Script".write_fgd(fgd_string, "", &self.script)?;
-        "Name".write_fgd(fgd_string, "", &self.name)?;
+        "Name".write_fgd(fgd_string, "", &encode_fgd_token(&self.name))?;
         "Icon".write_fgd(fgd_string, "", &self.icon)?;
         "Enchantment".write_fgd(fgd_string, "", &self.enchanting)?;
         write_object_flags(fgd_string, &self.flags)?;
@@ -518,7 +516,7 @@ mod weapon_tests {
     Plugin(string): "": "mymod.esp"
     Model(string): "": "w\daedric_dagger.nif"
     Script(string): "": "some_script"
-    Name(string): "": "Daedric Dagger"
+    Name(string): "": "Daedric_x20_Dagger"
     Icon(string): "": "w\tx_dagger.dds"
     Enchantment(string): "": "enchant_fire"
     ObjectFlags(string): "": ""
@@ -600,7 +598,7 @@ impl WriteFGDProp for Light {
         "Plugin".write_fgd(fgd_string, "", parent_plugin)?;
         "Model".write_fgd(fgd_string, "", &self.mesh)?;
         "Script".write_fgd(fgd_string, "", &self.script)?;
-        "Name".write_fgd(fgd_string, "", &self.name)?;
+        "Name".write_fgd(fgd_string, "", &encode_fgd_token(&self.name))?;
         "Icon".write_fgd(fgd_string, "", &self.icon)?;
         write_object_flags(fgd_string, &self.flags)?;
 
@@ -685,7 +683,7 @@ mod test_light_fgd {
         assert_contains!(out, "Plugin(string): \"\": \"my_lights.esp\"");
         assert_contains!(out, "Model(string): \"\": \"d\\torch.nif\"");
         assert_contains!(out, "Script(string): \"\": \"torch_script\"");
-        assert_contains!(out, "Name(string): \"\": \"Dungeon Torch\"");
+        assert_contains!(out, "Name(string): \"\": \"Dungeon_x20_Torch\"");
         assert_contains!(out, "Icon(string): \"\": \"tx_torch.dds\"");
         // -- Numeric props
         assert_contains!(out, "Weight(float): \"\": \"2.5\"");
@@ -950,7 +948,7 @@ impl WriteFGDProp for Clothing {
         "Plugin".write_fgd(fgd_string, "", parent_plugin)?;
         "Model".write_fgd(fgd_string, "", &self.mesh)?;
         "Script".write_fgd(fgd_string, "", &self.script)?;
-        "Name".write_fgd(fgd_string, "", &self.name)?;
+        "Name".write_fgd(fgd_string, "", &encode_fgd_token(&self.name))?;
         "Icon".write_fgd(fgd_string, "", &self.icon)?;
         "Enchantment".write_fgd(fgd_string, "", &self.enchanting)?;
         write_object_flags(fgd_string, &self.flags)?;
@@ -1103,7 +1101,7 @@ impl WriteFGDProp for Armor {
         "Plugin".write_fgd(fgd_string, "", parent_plugin)?;
         "Model".write_fgd(fgd_string, "", &self.mesh)?;
         "Script".write_fgd(fgd_string, "", &self.script)?;
-        "Name".write_fgd(fgd_string, "", &self.name)?;
+        "Name".write_fgd(fgd_string, "", &encode_fgd_token(&self.name))?;
         "Icon".write_fgd(fgd_string, "", &self.icon)?;
         "Enchantment".write_fgd(fgd_string, "", &self.enchanting)?;
         write_object_flags(fgd_string, &self.flags)?;
@@ -1269,7 +1267,7 @@ impl WriteFGDProp for MiscItem {
         "Plugin".write_fgd(fgd_string, "", parent_plugin)?;
         "Model".write_fgd(fgd_string, "", &self.mesh)?;
         "Script".write_fgd(fgd_string, "", &self.script)?;
-        "Name".write_fgd(fgd_string, "", &self.name)?;
+        "Name".write_fgd(fgd_string, "", &encode_fgd_token(&self.name))?;
         "Icon".write_fgd(fgd_string, "", &self.icon)?;
         write_object_flags(fgd_string, &self.flags)?;
 
@@ -1417,7 +1415,7 @@ impl WriteFGDProp for Lockpick {
         "Plugin".write_fgd(fgd_string, "", parent_plugin)?;
         "Model".write_fgd(fgd_string, "", &self.mesh)?;
         "Script".write_fgd(fgd_string, "", &self.script)?;
-        "Name".write_fgd(fgd_string, "", &self.name)?;
+        "Name".write_fgd(fgd_string, "", &encode_fgd_token(&self.name))?;
         "Icon".write_fgd(fgd_string, "", &self.icon)?;
         write_object_flags(fgd_string, &self.flags)?;
 
@@ -1531,7 +1529,7 @@ impl WriteFGDProp for Probe {
         "Plugin".write_fgd(fgd_string, "", parent_plugin)?;
         "Model".write_fgd(fgd_string, "", &self.mesh)?;
         "Script".write_fgd(fgd_string, "", &self.script)?;
-        "Name".write_fgd(fgd_string, "", &self.name)?;
+        "Name".write_fgd(fgd_string, "", &encode_fgd_token(&self.name))?;
         "Icon".write_fgd(fgd_string, "", &self.icon)?;
         write_object_flags(fgd_string, &self.flags)?;
 
@@ -1645,7 +1643,7 @@ impl WriteFGDProp for RepairItem {
         "Plugin".write_fgd(fgd_string, "", parent_plugin)?;
         "Model".write_fgd(fgd_string, "", &self.mesh)?;
         "Script".write_fgd(fgd_string, "", &self.script)?;
-        "Name".write_fgd(fgd_string, "", &self.name)?;
+        "Name".write_fgd(fgd_string, "", &encode_fgd_token(&self.name))?;
         "Icon".write_fgd(fgd_string, "", &self.icon)?;
         write_object_flags(fgd_string, &self.flags)?;
 
@@ -1758,7 +1756,7 @@ impl WriteFGDProp for Door {
         "Plugin".write_fgd(fgd_string, "", parent_plugin)?;
         "Model".write_fgd(fgd_string, "", &self.mesh)?;
         "Script".write_fgd(fgd_string, "", &self.script)?;
-        "Name".write_fgd(fgd_string, "", &self.name)?;
+        "Name".write_fgd(fgd_string, "", &encode_fgd_token(&self.name))?;
         "SoundClose".write_fgd(fgd_string, "", &self.close_sound)?;
         "SoundOpen".write_fgd(fgd_string, "", &self.open_sound)?;
         write_object_flags(fgd_string, &self.flags)?;
@@ -1854,7 +1852,7 @@ impl WriteFGDProp for Container {
         "Plugin".write_fgd(fgd_string, "", parent_plugin)?;
         "Model".write_fgd(fgd_string, "", &self.mesh)?;
         "Script".write_fgd(fgd_string, "", &self.script)?;
-        "Name".write_fgd(fgd_string, "", &self.name)?;
+        "Name".write_fgd(fgd_string, "", &encode_fgd_token(&self.name))?;
         write_object_flags(fgd_string, &self.flags)?;
 
         self.encumbrance.write_fgd(fgd_string, "Capacity", "")?;
@@ -1926,7 +1924,7 @@ mod tests {
         assert!(output.contains("Plugin(string): \"\": \"TestPlugin.esp\""));
         assert!(output.contains("Model(string): \"\": \"Meshes\\Crate01.nif\""));
         assert!(output.contains("Script(string): \"\": \"OpenCrateScript\""));
-        assert!(output.contains("Name(string): \"\": \"Wooden Crate\""));
+        assert!(output.contains("Name(string): \"\": \"Wooden_x20_Crate\""));
         assert!(output.contains("ObjectFlags(string): \"\": \"DELETED | PERSISTENT\""));
         assert!(output.contains("Capacity(float): \"\": \"150\""));
         assert!(output.contains("InventoryItemID_0(string): \"\": \"misc_com_bottle_01\""));
@@ -1960,11 +1958,10 @@ impl WriteFGDProp for Book {
         "Model".write_fgd(fgd_string, "", &self.mesh)?;
         "Icon".write_fgd(fgd_string, "", &self.icon)?;
         "Script".write_fgd(fgd_string, "", &self.script)?;
-        "Name".write_fgd(fgd_string, "", &self.name)?;
+        "Name".write_fgd(fgd_string, "", &encode_fgd_token(&self.name))?;
         "Enchantment".write_fgd(fgd_string, "", &self.enchanting)?;
         self.data.weight.write_fgd(fgd_string, "Weight", "")?;
         self.data.value.write_fgd(fgd_string, "Value", "")?;
-        "BookText".write_fgd(fgd_string, "", &self.text)?;
         "BookType".write_fgd(fgd_string, "", &self.data.book_type.display())?;
 
         if self.data.skill != SkillId::None {
@@ -2050,7 +2047,6 @@ mod test_book_fgd {
             "ObjectFlags(string)",
             "Weight(float)",
             "Value(integer)",
-            "BookText(string)",
             "BookType(string)",
             "EnchantCap(integer)",
         ] {
@@ -2114,11 +2110,13 @@ impl WriteFGDProp for Alchemy {
             ),
         )?;
 
+        writeln!(fgd_string, "[")?;
+
         "Plugin".write_fgd(fgd_string, "", parent_plugin)?;
         "Model".write_fgd(fgd_string, "", &self.mesh)?;
         "Script".write_fgd(fgd_string, "", &self.script)?;
         "Icon".write_fgd(fgd_string, "", &self.icon)?;
-        "Name".write_fgd(fgd_string, "", &self.name)?;
+        "Name".write_fgd(fgd_string, "", &encode_fgd_token(&self.name))?;
         write_object_flags(fgd_string, &self.flags)?;
 
         self.data.weight.write_fgd(fgd_string, "Weight", "")?;
@@ -2475,7 +2473,7 @@ impl WriteFGDProp for Apparatus {
         "Plugin".write_fgd(fgd_string, "", parent_plugin)?;
         "Model".write_fgd(fgd_string, "", &self.mesh)?;
         "Script".write_fgd(fgd_string, "", &self.script)?;
-        "Name".write_fgd(fgd_string, "", &self.name)?;
+        "Name".write_fgd(fgd_string, "", &encode_fgd_token(&self.name))?;
         "Icon".write_fgd(fgd_string, "", &self.icon)?;
         write_object_flags(fgd_string, &self.flags)?;
 

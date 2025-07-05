@@ -1,8 +1,11 @@
-use std::{collections::BTreeMap, path::PathBuf};
+use std::{
+    collections::{BTreeMap, HashSet},
+    path::PathBuf,
+};
 
 use openmw_config::{ConfigError, OpenMWConfiguration};
 use rayon::prelude::*;
-use tes3::esp::{EditorId, Plugin, TES3Object};
+use tes3::esp::{EditorId, Plugin, TES3Object, TypeInfo};
 use vfstool_lib::VFS;
 
 mod brush_class_props;
@@ -39,24 +42,45 @@ impl From<ConfigError> for ConfigManagerError {
 }
 
 use std::collections::HashMap;
+
+use crate::fgd::serialize::tag_to_tag_str;
 type BoundsMap = HashMap<String, [i32; 6]>;
 pub struct ConfigurationManager {
     merged_objects: BTreeMap<String, (TES3Object, String)>,
     object_bounds: BoundsMap,
     vfs: VFS,
     openmw_config: OpenMWConfiguration,
+    object_types: HashSet<&'static str>,
 }
 
 pub fn get_object_model_path(object: &TES3Object) -> Option<String> {
     let mesh = match object {
-        TES3Object::Script(_) | TES3Object::StartScript(_) => {
+        TES3Object::LeveledCreature(_)
+        | TES3Object::LeveledItem(_)
+        | TES3Object::Script(_)
+        | TES3Object::StartScript(_) => {
             return None;
         }
-        TES3Object::Static(record) => &record.mesh,
         TES3Object::Activator(record) => &record.mesh,
+        TES3Object::Alchemy(record) => &record.mesh,
+        TES3Object::Apparatus(record) => &record.mesh,
+        TES3Object::Armor(record) => &record.mesh,
+        TES3Object::Book(record) => &record.mesh,
+        TES3Object::Clothing(record) => &record.mesh,
+        TES3Object::Door(record) => &record.mesh,
         TES3Object::Ingredient(record) => &record.mesh,
         TES3Object::Light(record) => &record.mesh,
-        _ => unimplemented!(),
+        TES3Object::Lockpick(record) => &record.mesh,
+        TES3Object::MiscItem(record) => &record.mesh,
+        TES3Object::Probe(record) => &record.mesh,
+        TES3Object::RepairItem(record) => &record.mesh,
+        TES3Object::Static(record) => &record.mesh,
+        TES3Object::Weapon(record) => &record.mesh,
+        // TES3Object(record) => &record.mesh,
+        _ => unimplemented!(
+            "Unidentified object type in get_object_model_path: {}",
+            object.tag_str()
+        ),
     };
 
     if mesh == &String::default() {
@@ -68,8 +92,13 @@ pub fn get_object_model_path(object: &TES3Object) -> Option<String> {
 
 fn get_object_bounds_from_nif(vfs: &VFS, object: &TES3Object) -> Option<[i32; 6]> {
     let object_model = PathBuf::from("Meshes/").join(match object {
-        TES3Object::Static(record) => &record.mesh,
         TES3Object::Activator(record) => &record.mesh,
+        TES3Object::Alchemy(record) => &record.mesh,
+        TES3Object::Apparatus(record) => &record.mesh,
+        TES3Object::Armor(record) => &record.mesh,
+        TES3Object::Book(record) => &record.mesh,
+        TES3Object::Clothing(record) => &record.mesh,
+        TES3Object::Door(record) => &record.mesh,
         TES3Object::Ingredient(record) => &record.mesh,
         TES3Object::Light(record) => {
             if record.mesh == String::default() {
@@ -78,10 +107,19 @@ fn get_object_bounds_from_nif(vfs: &VFS, object: &TES3Object) -> Option<[i32; 6]
                 &record.mesh
             }
         }
-        TES3Object::Script(_) => {
+        TES3Object::Lockpick(record) => &record.mesh,
+        TES3Object::MiscItem(record) => &record.mesh,
+        TES3Object::Probe(record) => &record.mesh,
+        TES3Object::RepairItem(record) => &record.mesh,
+        TES3Object::Script(_) | TES3Object::LeveledCreature(_) | TES3Object::LeveledItem(_) => {
             return None;
         }
-        _ => unimplemented!(),
+        TES3Object::Static(record) => &record.mesh,
+        TES3Object::Weapon(record) => &record.mesh,
+        _ => unimplemented!(
+            "Unimplemented object type in get_object_bounds_from_nif: {}",
+            object.tag_str()
+        ),
     });
 
     if let Some(vfs_file) = vfs.get_file(&object_model) {
@@ -115,14 +153,8 @@ impl ConfigurationManager {
             .map(|plugin_name| {
                 if let Some(file) = self.vfs.get_file(plugin_name) {
                     if let Ok(plugin) = tes3::esp::Plugin::from_path_filtered(file.path(), |tag| {
-                        matches!(
-                            &tag,
-                            tes3::esp::Static::TAG
-                                | tes3::esp::Script::TAG
-                                | tes3::esp::Activator::TAG
-                                | tes3::esp::Ingredient::TAG
-                                | tes3::esp::Light::TAG
-                        )
+                        serialize::is_serializable_tag(&tag)
+                            && self.object_types.contains(tag_to_tag_str(&tag))
                     }) {
                         Ok((plugin, plugin_name))
                     } else {
@@ -168,11 +200,11 @@ impl ConfigurationManager {
     }
 }
 
-impl TryFrom<&str> for ConfigurationManager {
+impl TryFrom<(&str, &[&'static str])> for ConfigurationManager {
     type Error = ConfigManagerError;
 
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        let config_path = PathBuf::from(value);
+    fn try_from((config_path, object_types): (&str, &[&'static str])) -> Result<Self, Self::Error> {
+        let config_path = PathBuf::from(config_path);
 
         let openmw_config = OpenMWConfiguration::new(Some(config_path))?;
 
@@ -187,11 +219,17 @@ impl TryFrom<&str> for ConfigurationManager {
             ),
         );
 
+        let object_types: HashSet<&'static str> = object_types
+            .iter()
+            .map(|object_type| *object_type)
+            .collect();
+
         let mut manager = ConfigurationManager {
-            object_bounds: HashMap::new(),
             vfs,
             openmw_config,
+            object_types,
             merged_objects: BTreeMap::new(),
+            object_bounds: HashMap::new(),
         };
 
         manager.collect_merged_objects()?;
@@ -209,107 +247,128 @@ mod cfgmgr_test {
     #[test]
     fn test_default_path() {
         let path = openmw_config::default_config_path();
-        assert!(ConfigurationManager::try_from(path.to_str().unwrap()).is_ok());
+        let object_types: &[&'static str] = &["NONE"];
+        assert!(ConfigurationManager::try_from((path.to_str().unwrap(), object_types)).is_ok(),);
     }
 
     #[test]
     fn test_serialize_all() {
         let path = openmw_config::default_config_path();
-        let config = ConfigurationManager::try_from(path.to_str().unwrap()).unwrap();
+        let config = ConfigurationManager::try_from((
+            path.to_str().unwrap(),
+            &serialize::SERIALIZABLE_TYPES[..],
+        ))
+        .unwrap();
 
-        let mut file = File::create("./FGDOut.fgd").unwrap();
+        let mut file = File::create("./FGDOut_ALL.fgd").unwrap();
         let mut writer = BufWriter::new(&mut file);
 
         assert!(serialize::serialize_objects_as_fgd(&config, &mut writer).is_ok());
     }
 
-    #[test]
-    fn test_serialize_static() {
-        let path = openmw_config::default_config_path();
-        let config = ConfigurationManager::try_from(path.to_str().unwrap()).unwrap();
+    fn serialize_by_type(object_type: &'static str, config_path: Option<std::path::PathBuf>) {
+        let path = config_path.unwrap_or(openmw_config::default_config_path());
 
-        let mut file = File::create("./FGDOut_Static.fgd").unwrap();
+        let types_slice: &[&'static str] = &[object_type];
+
+        let config = ConfigurationManager::try_from((path.to_str().unwrap(), types_slice)).unwrap();
+
+        let path_string = format!("./FGDOut_{object_type}.fgd");
+        let mut file = File::create(path_string).unwrap();
         let mut writer = BufWriter::new(&mut file);
 
         assert!(
-            serialize::serialize_typed_objects_as_fgd(
-                &config,
-                &mut writer,
-                tes3::esp::Static::TAG_STR
-            )
-            .is_ok()
+            serialize::serialize_typed_objects_as_fgd(&config, &mut writer, object_type,).is_ok()
         );
+    }
+
+    #[test]
+    fn test_serialize_static() {
+        serialize_by_type(tes3::esp::Static::TAG_STR, None);
     }
 
     #[test]
     fn test_serialize_activator() {
-        let path = openmw_config::default_config_path();
-        let config = ConfigurationManager::try_from(path.to_str().unwrap()).unwrap();
-
-        let mut file = File::create("./FGDOut_Activator.fgd").unwrap();
-        let mut writer = BufWriter::new(&mut file);
-
-        assert!(
-            serialize::serialize_typed_objects_as_fgd(
-                &config,
-                &mut writer,
-                tes3::esp::Activator::TAG_STR
-            )
-            .is_ok()
-        );
+        serialize_by_type(tes3::esp::Activator::TAG_STR, None);
     }
 
     #[test]
     fn test_serialize_script() {
-        let path = openmw_config::default_config_path();
-        let config = ConfigurationManager::try_from(path.to_str().unwrap()).unwrap();
-
-        let mut file = File::create("./FGDOut_Script.fgd").unwrap();
-        let mut writer = BufWriter::new(&mut file);
-
-        assert!(
-            serialize::serialize_typed_objects_as_fgd(
-                &config,
-                &mut writer,
-                tes3::esp::Script::TAG_STR
-            )
-            .is_ok()
-        );
+        serialize_by_type(tes3::esp::Script::TAG_STR, None);
     }
 
     #[test]
     fn test_serialize_ingredient() {
-        let path = openmw_config::default_config_path();
-        let config = ConfigurationManager::try_from(path.to_str().unwrap()).unwrap();
-
-        let mut file = File::create("./FGDOut_Ingredient.fgd").unwrap();
-        let mut writer = BufWriter::new(&mut file);
-
-        assert!(
-            serialize::serialize_typed_objects_as_fgd(
-                &config,
-                &mut writer,
-                tes3::esp::Ingredient::TAG_STR
-            )
-            .is_ok()
-        );
+        serialize_by_type(tes3::esp::Ingredient::TAG_STR, None);
     }
 
     #[test]
     fn test_serialize_light() {
-        let path = openmw_config::default_config_path();
-        let config = ConfigurationManager::try_from(path.to_str().unwrap()).unwrap();
+        serialize_by_type(tes3::esp::Light::TAG_STR, None);
+    }
 
-        let mut file = File::create("./FGDOut_Light.fgd").unwrap();
-        let mut writer = BufWriter::new(&mut file);
+    #[test]
+    fn test_serialize_armor() {
+        serialize_by_type(tes3::esp::Armor::TAG_STR, None);
+    }
 
-        assert!(
-            serialize::serialize_typed_objects_as_fgd(
-                &config,
-                &mut writer,
-                tes3::esp::Light::TAG_STR
-            )
-            .is_ok()
-        );
+    #[test]
+    fn test_serialize_weapon() {
+        serialize_by_type(tes3::esp::Weapon::TAG_STR, None);
+    }
+
+    #[test]
+    fn test_serialize_clothing() {
+        serialize_by_type(tes3::esp::Armor::TAG_STR, None);
+    }
+
+    #[test]
+    fn test_serialize_apparatus() {
+        serialize_by_type(tes3::esp::Apparatus::TAG_STR, None);
+    }
+
+    #[test]
+    fn test_serialize_potion() {
+        serialize_by_type(tes3::esp::Alchemy::TAG_STR, None);
+    }
+
+    #[test]
+    fn test_serialize_lockpick() {
+        serialize_by_type(tes3::esp::Lockpick::TAG_STR, None);
+    }
+
+    #[test]
+    fn test_serialize_probe() {
+        serialize_by_type(tes3::esp::Probe::TAG_STR, None);
+    }
+
+    #[test]
+    fn test_serialize_misc() {
+        serialize_by_type(tes3::esp::MiscItem::TAG_STR, None);
+    }
+
+    #[test]
+    fn test_serialize_repair() {
+        serialize_by_type(tes3::esp::RepairItem::TAG_STR, None);
+    }
+
+    #[test]
+    fn test_serialize_leveled_creature() {
+        serialize_by_type(tes3::esp::LeveledCreature::TAG_STR, None);
+    }
+
+    #[test]
+    fn test_serialize_leveled_item() {
+        serialize_by_type(tes3::esp::LeveledItem::TAG_STR, None);
+    }
+
+    #[test]
+    fn test_serialize_book() {
+        serialize_by_type(tes3::esp::Book::TAG_STR, None);
+    }
+
+    #[test]
+    fn test_serialize_door() {
+        serialize_by_type(tes3::esp::Door::TAG_STR, None);
     }
 }
