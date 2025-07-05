@@ -1,24 +1,27 @@
 [package]
 name = "morrobroom"
 version = "0.1.0"
-edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+edition = "2024"
 
 [dependencies]
-clap = "4.5.0"
+clap = "4.5.40"
 delaunator = "1.0.2"
-imagesize = "0.12.0"
-mimalloc = "0.1.39"
-nalgebra = "0.32.3"
-openmw-cfg = "0.5.0"
+imagesize = "0.14.0"
+mimalloc = "0.1.47"
+nalgebra = "0.33.2"
+vfstool_lib = "0.1.0"
+openmw-cfg = "0.5.2"
 shalrath = "0.2.5"
+rayon = "1.10.0"
+glam = "0.30.4"
 
 [dependencies.tes3]
 git = "https://github.com/Greatness7/tes3"
-branch = "dev"
+branch = "main"
 features = ["esp", "nif"]
 
+[dependencies.openmw-config]
+version = "0.1.5"
 
 [dependencies.shambler]
 git = "https://github.com/magicaldave/shambler"
