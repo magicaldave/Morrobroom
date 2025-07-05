@@ -1635,7 +1635,7 @@ impl WriteFGDProp for RepairItem {
             &["world_Base"],
             bounds,
             format!(
-                "probe_{}",
+                "repairitem_{}",
                 self.editor_id_ascii_lowercase().replace(' ', "_")
             ),
         )?;
