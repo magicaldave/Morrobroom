@@ -419,15 +419,16 @@ fn append_cell_reference(
     }
 }
 
-fn get_rotation(str: &String) -> [f32; 3] {
-    let rot: Vec<&str> = str.split_whitespace().collect();
-    let mut array = [0.0f32; 3];
+fn get_rotation(input: &str) -> [f32; 3] {
+    let mut angles = [0.0f32; 3];
 
-    for (index, axis) in rot.iter().enumerate() {
-        array[index] = axis.parse::<f32>().unwrap_or_default().to_radians();
+    for (i, token) in input.split_whitespace().take(3).enumerate() {
+        if let Ok(val) = token.parse::<f32>() {
+            angles[i] = val.to_radians();
+        }
     }
 
-    [array[2], array[0], array[1]]
+    [angles[2], angles[0], angles[1]]
 }
 
 /// Should probably make some specific struct for handling ESP objects
