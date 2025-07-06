@@ -1,11 +1,11 @@
 use imagesize::size;
-use openmw_cfg::{find_file, get_config, Ini};
+use openmw_cfg::{Ini, find_file, get_config};
 use shalrath::repr::*;
 use shambler::{
+    GeoMap, Textures,
     entity::EntityId,
     face::{FaceNormals, FaceTriangleIndices, FaceUvs, FaceVertices},
     texture::TextureId,
-    GeoMap, Textures,
 };
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
@@ -29,18 +29,25 @@ pub struct MapData {
 
 impl MapData {
     pub fn new(map_name: &String) -> Self {
+        // First load the map from the FS and parse it using shalrath
         let map = fs::read_to_string(map_name)
             .expect("Reading file failed. Bad news! Does it exist?")
             .parse::<Map>()
             .expect("Map parsing failed!");
 
+        // Then pass the map into the basic Shambler methods
         let geomap = GeoMap::new(map);
 
+        // Boilerplate for generating hulls, textures, etc
         let face_planes = shambler::face::face_planes(&geomap.face_planes);
+
         let brush_hulls = shambler::brush::brush_hulls(&geomap.brush_faces, &face_planes);
+
         let (face_vertices, face_vertex_planes) =
             shambler::face::face_vertices(&geomap.brush_faces, &face_planes, &brush_hulls);
+
         let face_centers = shambler::face::face_centers(&face_vertices);
+
         let face_indices = shambler::face::face_indices(
             &geomap.face_planes,
             &face_planes,
@@ -59,8 +66,10 @@ impl MapData {
         );
 
         let face_tri_indices = shambler::face::face_triangle_indices(&face_indices);
+
         let inverted_face_tri_indices =
             shambler::face::face_triangle_indices(&inverted_face_indices);
+
         let flat_normals = shambler::face::normals_flat(&face_vertices, &face_planes);
 
         let smooth_normals =
