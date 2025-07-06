@@ -374,12 +374,16 @@ fn main() {
 }
 
 fn point_entity_position(scale_mode: &f32, prop_map: &HashMap<&String, &String>) -> SV3 {
-    let coords: Vec<f32> = prop_map
-        .get(&"origin".to_string())
-        .expect("All point entities must have an origin")
-        .split_whitespace()
-        .map(|s| s.parse::<f32>().expect("Invalid coordinate"))
-        .collect();
+    let coords: Vec<f32> = match prop_map.iter().find(|(k, _)| k.as_str() == "origin") {
+        None => {
+            eprintln!("All point entities must have an origin!");
+            std::process::exit(256);
+        }
+        Some((_, v)) => v
+            .split_whitespace()
+            .map(|s| s.parse::<f32>().expect("Invalid coordinate"))
+            .collect(),
+    };
 
     assert_eq!(coords.len(), 3, "Origin must have exactly 3 coordinates");
 
