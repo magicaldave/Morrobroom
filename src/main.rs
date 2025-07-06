@@ -243,11 +243,14 @@ fn main() {
             None => {}
         }
 
-        let mesh_distance: SV3 = Mesh::centroid(&mesh.node_distances) * (*scale_mode as f32);
-        mesh.final_distance = mesh_distance;
+        // All nodes on the mesh collectively have their own position
+        // The center of which, is determined to be the actual position of the asset
+        // This is then used in plugin serialization to define the object's local position, and this position is then correspondingly stripped off the NIF
+        mesh.worldspace_position = Mesh::centroid(&mesh.node_distances) * (*scale_mode as f32);
+
         mesh.mangle = match get_prop("mangle", &prop_map) {
-            mangle if mangle.is_empty() => *get_rotation(&"0 0 0".to_string()),
-            mangle => *get_rotation(&mangle),
+            None => *get_rotation(&"0 0 0".to_string()),
+            Some(mangle) => *get_rotation(&mangle),
         };
 
         // Also use linked groups to determine if the mesh & base def should be ignored
@@ -264,7 +267,7 @@ fn main() {
             &mut used_indices,
             &mut cell,
             ref_id,
-            mesh_distance,
+            mesh.worldspace_position,
             mesh.mangle,
         );
     }
