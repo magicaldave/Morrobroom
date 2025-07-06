@@ -117,7 +117,6 @@ pub const fn default_object_types() -> [TES3ObjectType; 18] {
     ]
 }
 
-/// Compile TrenchBroom `.map` files into usable Morrowind mods.
 #[derive(Debug, Parser)]
 #[command(
     name = "morrobroom",
@@ -144,8 +143,8 @@ pub enum BroomCommand {
 
         /// Name of the plugin used when serializing.
         /// If not present, defaults to the name of the map file used in generation.
-        #[arg(long = "output", short = 'o', required = false, value_parser = validate_compile_output_path)]
-        output_path: PathBuf,
+        #[arg(long = "output", short = 'o', value_parser = validate_compile_output_path)]
+        output_path: Option<PathBuf>,
     },
     FGD {
         /// Scale to use when generating object bounding boxes.
@@ -356,11 +355,13 @@ mod tests {
                 output_path,
             } => {
                 assert_eq!(object_scale, 2.0);
+
                 assert_eq!(
                     map_path.canonicalize().unwrap(),
                     map_file.canonicalize().unwrap()
                 );
-                assert_eq!(output_path, tmp_out.canonicalize().unwrap());
+
+                assert_eq!(output_path, Some(tmp_out.canonicalize().unwrap()));
             }
             _ => panic!("expected compile subcommand"),
         }
