@@ -1,6 +1,6 @@
 use nalgebra::{Rotation3, Vector3};
 use openmw_cfg::{find_file, get_config};
-use shambler::{brush::BrushId, entity::EntityId, Vector3 as SV3};
+use shambler::{Vector3 as SV3, brush::BrushId, entity::EntityId};
 use tes3::{
     esp,
     nif::{
@@ -10,17 +10,16 @@ use tes3::{
 };
 
 use crate::{
-    brush_ni_node::{BrushNiAlphaProps, BrushNiMatProps},
     BrushNiNode, MapData,
+    brush_ni_node::{BrushNiAlphaProps, BrushNiMatProps},
 };
 
-#[derive(Clone)]
 pub struct Mesh {
     pub game_object: esp::TES3Object,
     pub node_distances: Vec<SV3>,
     pub stream: NiStream,
     pub base_index: NiLink<NiNode>,
-    pub final_distance: SV3,
+    pub worldspace_position: SV3,
     pub mangle: [f32; 3],
     collision_index: NiLink<RootCollisionNode>,
 }
@@ -50,7 +49,7 @@ impl Mesh {
             collision_index,
             game_object: esp::TES3Object::Static(esp::Static::default()),
             node_distances: Vec::new(),
-            final_distance: SV3::default(),
+            worldspace_position: SV3::default(),
             mangle: [0.0, 0.0, 0.0],
         }
     }
