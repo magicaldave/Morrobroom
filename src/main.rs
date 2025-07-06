@@ -1,4 +1,5 @@
 use std::{
+    borrow::Cow,
     cmp::min,
     collections::{HashMap, HashSet},
     io,
@@ -57,7 +58,7 @@ fn main() -> io::Result<()> {
     // It can't be done multiple times :/
     let mut cell = None;
     let mut created_objects = Vec::new();
-    let mut processed_base_objects: HashSet<String> = HashSet::new();
+    let mut processed_base_objects: HashSet<Cow<'_, str>> = HashSet::new();
     let map_string = map_path.to_string_lossy().to_string();
 
     let map_data = MapData::new(&map_string);
@@ -153,23 +154,23 @@ fn main() -> io::Result<()> {
         }
 
         let ref_id = match prop_map.get(&"RefId".to_string()) {
-            Some(ref_id) => ref_id[..min(ref_id.len(), 32)].to_string(),
+            Some(ref_id) => Cow::Borrowed(&ref_id[..min(ref_id.len(), 32)]),
             None => {
                 // The only entity that ever has this happen should be worldspawn
                 let ref_id = format!("{map_dir}-scene-{entity_id}");
-                ref_id[..min(ref_id.len(), 32)].to_string()
+                Cow::Owned(ref_id[..min(ref_id.len(), 32)].to_string())
             }
         };
 
-        if processed_base_objects.contains(&ref_id.to_string()) {
+        if processed_base_objects.contains(&ref_id) {
             println!("Placing new instance of {ref_id}");
         } else {
-            processed_base_objects.insert(ref_id.to_string());
+            processed_base_objects.insert(ref_id.clone());
         }
 
         let mesh_name = match prop_map.get(&"Model".to_string()) {
             Some(mesh_name) => mesh_name.to_string(),
-            None => format!("{}/{}.nif", map_dir, ref_id),
+            None => format!("{}/{}.nif", map_dir, &ref_id),
         };
 
         // We create the base record for the objects here.
@@ -211,12 +212,16 @@ fn main() -> io::Result<()> {
                         local_cell.name = map_dir.clone();
                     }
 
-                    processed_base_objects.extend([local_cell.name.clone(), ref_id.clone()]);
+                    processed_base_objects.insert(Cow::Owned(local_cell.name.to_string()));
+                    processed_base_objects.insert(ref_id.clone());
+
+                    // processed_base_objects
+                    //     .extend([&Cow::Borrowed(&local_cell.name.as_str()), &ref_id]);
 
                     cell = Some(local_cell);
 
                     mesh.game_object = Static {
-                        id: ref_id.to_owned(),
+                        id: ref_id.clone().to_string(),
                         mesh: mesh_name.to_owned(),
                         flags: esp::ObjectFlags::default(),
                     }
@@ -225,7 +230,7 @@ fn main() -> io::Result<()> {
                 "world_Detail" => {
                     processed_base_objects.insert(ref_id.clone());
                     mesh.game_object = Static {
-                        id: ref_id.to_owned(),
+                        id: ref_id.clone().to_string(),
                         mesh: mesh_name.to_owned(),
                         ..Default::default()
                     }
@@ -264,7 +269,7 @@ fn main() -> io::Result<()> {
         append_cell_reference(
             &mut used_indices,
             &mut cell,
-            ref_id,
+            ref_id.to_string(),
             mesh.worldspace_position,
             mesh.mangle,
         );
@@ -309,39 +314,39 @@ fn main() -> io::Result<()> {
                 );
             }
             "world_CreatureList" => {
-                let ref_id = match prop_map.get(&"RefId".to_string()) {
+                let ref_id = Cow::Owned(match prop_map.get(&"RefId".to_string()) {
                     Some(ref_id) => ref_id[..min(ref_id.len(), 32)].to_string(),
                     None => panic!(
                         "RefIds are mandatory for all point entities, failed on creature list, entity ID: {}",
                         entity_id
                     ),
-                };
+                });
 
                 if !processed_base_objects.contains(&ref_id) {
-                    created_objects.push(game_object::creature_list(&prop_map, ref_id.as_str()));
-                    processed_base_objects.insert(ref_id.to_string());
+                    created_objects.push(game_object::creature_list(&prop_map, &ref_id));
+                    processed_base_objects.insert(ref_id.clone());
                 }
 
                 append_cell_reference(
                     &mut used_indices,
                     &mut cell,
-                    ref_id,
+                    ref_id.clone().to_string(),
                     point_entity_position(&object_scale, &prop_map),
                     [0.0, 0.0, 0.0],
                 );
             }
             "world_ItemList" => {
-                let ref_id = match prop_map.get(&"RefId".to_string()) {
+                let ref_id = Cow::Owned(match prop_map.get(&"RefId".to_string()) {
                     Some(ref_id) => ref_id[..min(ref_id.len(), 32)].to_string(),
                     None => panic!(
                         "RefIds are mandatory for all point entities, failed on item list, entity ID: {}",
                         entity_id
                     ),
-                };
+                });
 
                 if !processed_base_objects.contains(&ref_id) {
-                    created_objects.push(game_object::item_list(&prop_map, ref_id.as_str()));
-                    processed_base_objects.insert(ref_id.to_string());
+                    created_objects.push(game_object::item_list(&prop_map, &ref_id));
+                    processed_base_objects.insert(ref_id);
                 }
             }
             class => {
@@ -351,13 +356,13 @@ fn main() -> io::Result<()> {
     }
 
     if let Some(cell) = cell {
-        processed_base_objects.insert(cell.editor_id().to_string());
-        created_objects.push(esp::TES3Object::Cell(cell));
+        processed_base_objects.insert(Cow::Owned(cell.editor_id().to_string()));
+        created_objects.push(cell.into());
     }
 
     let point_light_string = format!("{map_dir}-PL");
     plugin.objects.retain(|obj| {
-        !processed_base_objects.contains(&obj.editor_id().to_string())
+        !processed_base_objects.contains(&obj.editor_id())
             && !obj.editor_id().contains(&point_light_string)
     });
 
