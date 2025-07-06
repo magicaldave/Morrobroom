@@ -82,11 +82,7 @@ fn main() {
         .flat_map(|cell| {
             cell.references.iter().filter_map(
                 |((mast_idx, ref_idx), _reference)| {
-                    if *mast_idx == 0 {
-                        Some(*ref_idx)
-                    } else {
-                        None
-                    }
+                    if *mast_idx == 0 { Some(*ref_idx) } else { None }
                 },
             )
         })
@@ -136,11 +132,15 @@ fn main() {
                         Some(ref_id) => {
                             ref_instances += 1;
                             if processed_group_objects.contains(ref_id) {
-                                println!("We don't have full refId support yet, but this object {ref_id} has appeared in this group {ref_instances} times"); // In theory by this point, we should have a mesh for this object already.
-                                                                                                                                                             // Alternatively, we have to generate it here, which is probably going to be likely.
+                                println!(
+                                    "We don't have full refId support yet, but this object {ref_id} has appeared in this group {ref_instances} times"
+                                ); // In theory by this point, we should have a mesh for this object already.
+                                // Alternatively, we have to generate it here, which is probably going to be likely.
                                 continue; // If it does exist, though, we need to simply derive its placement
                             }
-                            println!("Adding {ref_id} to unique group set. This should actually not be generated as part of the mesh, but rather create a new one for this unique object. Then it should be placed in the ESP file and referred to later.");
+                            println!(
+                                "Adding {ref_id} to unique group set. This should actually not be generated as part of the mesh, but rather create a new one for this unique object. Then it should be placed in the ESP file and referred to later."
+                            );
                             processed_group_objects.push(ref_id.to_string());
                         }
                         None => {} // object has no refid, and it's not a group, but it is a member of a group. This maybe shouldn't happen
