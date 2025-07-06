@@ -1,84 +1,68 @@
 use std::{
     cmp::min,
     collections::{HashMap, HashSet},
-    fs,
-    path::Path,
+    io,
 };
 
-use clap::{Arg, Command};
+use clap::Parser;
 use shambler::Vector3 as SV3;
 use tes3::esp::{self, Cell, EditorId, Header, Plugin, Static, TES3Object};
 
-use morrobroom::get_prop;
+use morrobroom::{create_workdir, get_prop};
+
+mod broom_args;
+use broom_args::{BroomCommand, MorrobroomArgs};
 
 mod brush_ni_node;
 use brush_ni_node::BrushNiNode;
+
 mod map_data;
 use map_data::MapData;
+
 mod mesh;
 use mesh::Mesh;
+
 mod game_object;
 mod surfaces;
 
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
-fn main() {
-    let args = Command::new("morrobroom")
-        .about("Compile trenchbroom .map files into usable Morrowind mods.")
-    .override_usage("morrobroom \"Path/to/Map_Name.map\"")
-    .arg_required_else_help(true)
-    .args(&[
-        Arg::new("MAP_NAME")
-            .help("Input map file name.")
-            .value_parser(validate_input_map)
-            .long("map")
-            .required(true),
-        Arg::new("MW_DIR")
-            .help("Morrowind install directory. Due to trenchbroom behavior you should use manually created symlinks or junctions to achieve vfs-like functionality.")
-            .value_parser(check_morrowind_directory)
-            .long("mw-dir")
-            .required(false),
-        Arg::new("PLUGIN_PATH")
-            .help("Path to output plugun. Can be a new or existing plugin, using absolute or relative paths.")
-            .long("out")
-            .value_parser(validate_input_plugin),
-        Arg::new("SCALE")
-            .help("Overall scale to apply to output meshes. Quake and Morrowind use different scales, as may authors, so for accuracy reasons this argument is required.")
-            .long("scale")
-            .value_parser(validate_scale),
-        Arg::new("MODE")
-            .help("Whether to compile in openmw, morrowind.exe, or librequake mode.")
-            .long("mode")
-            .value_parser(validate_mode),
-    ])
-    .get_matches();
+fn main() -> io::Result<()> {
+    let broom_args = MorrobroomArgs::parse();
 
-    let map_name = args.get_one::<String>("MAP_NAME").unwrap();
-    let scale_mode = args.get_one::<f32>("SCALE").unwrap_or(&1.0);
-
-    let (workdir, map_dir, plugin_name) = match args.get_one::<String>("PLUGIN_PATH") {
-        Some(name) => {
-            let (wd, md) = create_workdir(name);
-            (wd, md, name.to_string())
-        }
-        None => {
-            let (wd, md) = create_workdir(&map_name);
-            let name = format!("{wd}/{md}.esp");
-            (wd, md, name)
+    let (map_path, object_scale, output_path) = match broom_args.command {
+        BroomCommand::Compile {
+            map_path,
+            object_scale,
+            output_path,
+        } => (map_path, object_scale, output_path),
+        BroomCommand::FGD {
+            object_scale,
+            object_types,
+            output_path,
+            openmw_config,
+        } => {
+            eprintln!(
+                "FGD Compilation arguments not yet implemented! Please use `cargo test` to compile an FGD set. Sorry!"
+            );
+            std::process::exit(420);
         }
     };
 
-    let mut plugin = esp::Plugin::from_path(&plugin_name).unwrap_or(esp::Plugin::default());
+    let (work_dir, map_dir) = create_workdir(&map_path)
+        .map_err(|error_string| io::Error::new(io::ErrorKind::InvalidInput, error_string))?;
 
     // Push the cell record to the plugin
     // It can't be done multiple times :/
     let mut cell = None;
     let mut created_objects = Vec::new();
     let mut processed_base_objects: HashSet<String> = HashSet::new();
+    let map_string = map_path.to_string_lossy().to_string();
 
-    let map_data = MapData::new(map_name);
+    let map_data = MapData::new(&map_string);
 
+    let mut plugin = esp::Plugin::from_path(&output_path).unwrap_or(esp::Plugin::default());
     let mut used_indices: HashSet<u32> = plugin
         .objects_of_type::<Cell>()
         .flat_map(|cell| {
@@ -98,7 +82,7 @@ fn main() {
     for (entity_id, brushes) in map_data.geomap.entity_brushes.iter() {
         let prop_map = map_data.get_entity_properties(entity_id);
 
-        let mut mesh = Mesh::from_map(brushes, &map_data, &scale_mode, entity_id);
+        let mut mesh = Mesh::from_map(brushes, &map_data, &object_scale, entity_id);
 
         match prop_map.get(&"_tb_id".to_string()) {
             Some(group_id) => {
@@ -205,7 +189,7 @@ fn main() {
                 "item_Light" => {
                     // Keep in mind this is for lights made from brushes. We also need to support point lights, so that they don't necessarily have to be associated with an object.
                     mesh.game_object =
-                        game_object::light(&prop_map, scale_mode, &ref_id, &mesh_name);
+                        game_object::light(&prop_map, &object_scale, &ref_id, &mesh_name);
                 }
                 "item_Misc" => {
                     mesh.game_object = game_object::misc(&prop_map, &ref_id, &mesh_name);
@@ -246,7 +230,7 @@ fn main() {
         // All nodes on the mesh collectively have their own position
         // The center of which, is determined to be the actual position of the asset
         // This is then used in plugin serialization to define the object's local position, and this position is then correspondingly stripped off the NIF
-        mesh.worldspace_position = Mesh::centroid(&mesh.node_distances) * (*scale_mode as f32);
+        mesh.worldspace_position = Mesh::centroid(&mesh.node_distances) * (object_scale as f32);
 
         mesh.mangle = match get_prop("mangle", &prop_map) {
             None => *get_rotation(&"0 0 0".to_string()),
@@ -257,7 +241,7 @@ fn main() {
         // Also we should probably just not check this way *only* and
         // also destroy matching objects once the refId has been determined.
         if !created_objects.contains(&mesh.game_object) {
-            let mesh_path = format!("{workdir}/Meshes/{mesh_name}");
+            let mesh_path = format!("{}/Meshes/{mesh_name}", work_dir.display());
             println!("Saving base object definition & mesh for {ref_id} to plugin as {mesh_path}");
             mesh.save(&mesh_path);
             created_objects.push(mesh.game_object.clone());
@@ -297,7 +281,7 @@ fn main() {
 
                 created_objects.push(game_object::point_light(
                     &prop_map,
-                    scale_mode,
+                    &object_scale,
                     radius,
                     ref_id.as_str(),
                 ));
@@ -306,7 +290,7 @@ fn main() {
                     &mut used_indices,
                     &mut cell,
                     ref_id,
-                    point_entity_position(scale_mode, &prop_map),
+                    point_entity_position(&object_scale, &prop_map),
                     [0.0, 0.0, 0.0],
                 );
             }
@@ -328,7 +312,7 @@ fn main() {
                     &mut used_indices,
                     &mut cell,
                     ref_id,
-                    point_entity_position(scale_mode, &prop_map),
+                    point_entity_position(&object_scale, &prop_map),
                     [0.0, 0.0, 0.0],
                 );
             }
@@ -357,20 +341,25 @@ fn main() {
         created_objects.push(esp::TES3Object::Cell(cell));
     }
 
-    let fail_str = format!("Saving {plugin_name} failed!");
-
+    let point_light_string = format!("{map_dir}-PL");
     plugin.objects.retain(|obj| {
         !processed_base_objects.contains(&obj.editor_id().to_string())
-            && !obj
-                .editor_id()
-                .contains(&format!("{map_dir}-PL").to_string())
+            && !obj.editor_id().contains(&point_light_string)
     });
-    plugin.objects.extend(created_objects);
-    create_header_if_missing(&mut plugin);
-    plugin.sort_objects();
-    plugin.save_path(&plugin_name).expect(&fail_str);
 
-    println!("Wrote {plugin_name} to disk successfully.");
+    plugin.objects.extend(created_objects);
+
+    create_header_if_missing(&mut plugin);
+
+    plugin.sort_objects();
+
+    plugin
+        .save_path(&output_path)
+        .expect(&format!("Saving {} failed!", &output_path.display()));
+
+    println!("Wrote {} to disk successfully.", &output_path.display());
+
+    Ok(())
 }
 
 fn point_entity_position(scale_mode: &f32, prop_map: &HashMap<&String, &String>) -> SV3 {
@@ -448,129 +437,4 @@ fn create_header_if_missing(plugin: &mut Plugin) {
             )
         }
     }
-}
-
-fn create_workdir(map_name: &String) -> (String, String) {
-    let dir_index = map_name
-        .rfind('/')
-        .expect("Map should always have an extension, this is probably a directory");
-
-    let ext_index = map_name
-        .rfind('.')
-        .expect("Map should always have an extension, this is probably a directory");
-
-    let workdir = &map_name[..dir_index];
-    let map_dir = &map_name[dir_index + 1..ext_index];
-
-    if !fs::metadata(format!("{workdir}")).is_ok() {
-        fs::create_dir(format!("{workdir}"))
-            .expect("Root workdir folder creation failed! This is very bad!")
-    }
-
-    if !fs::metadata(format!("{workdir}/Meshes/")).is_ok() {
-        fs::create_dir(format!("{workdir}/Meshes/"))
-            .expect("Workdir meshes folder creation failed! This is very bad!")
-    }
-
-    if !fs::metadata(format!("{workdir}/Meshes/{map_dir}")).is_ok() {
-        fs::create_dir(format!("{workdir}/Meshes/{map_dir}"))
-            .expect("Workdir map folder creation failed! This is very bad!")
-    }
-
-    (workdir.to_string(), map_dir.to_string())
-}
-
-fn validate_input_map(arg: &str) -> Result<String, String> {
-    if arg != "-" {
-        let path = arg.as_ref();
-        validate_map_extension(path)?;
-        if !path.exists() {
-            return Err(format!("\"{}\" (file does not exist).", path.display()));
-        }
-    }
-    Ok(arg.into())
-}
-
-fn validate_map_extension(path: &Path) -> Result<(), String> {
-    let ext = get_extension(path);
-    if matches!(&*ext, "map") {
-        return Ok(());
-    }
-    Err(format!("\"{}\" is not a map file!.", path.display()))
-}
-
-fn validate_input_plugin(arg: &str) -> Result<String, String> {
-    if arg != "-" {
-        let path = arg.as_ref();
-        validate_plugin_extension(path)?;
-        println!(
-            "Warning! {} does not already exist. Creating a new plugin.",
-            arg
-        );
-    }
-    Ok(arg.into())
-}
-
-fn validate_plugin_extension(path: &Path) -> Result<(), String> {
-    let ext = get_extension(path);
-    if matches!(&*ext, "esp" | "esm" | "omwaddon" | "omwgame") {
-        return Ok(());
-    }
-    Err(format!(
-        "\"{}\" is not an Elder Scrolls plugin file!.",
-        path.display()
-    ))
-}
-
-fn validate_mode(arg: &str) -> Result<String, String> {
-    match arg {
-        "vanilla" => Ok(arg.into()),
-        "openmw" => Ok(arg.into()),
-        "librequake" => Ok(arg.into()),
-        "mw" => Ok(arg.into()),
-        "lq" => Ok(arg.into()),
-        _ => Err(format!("\"{}\" is not a valid mode.", arg)),
-    }
-}
-
-/// Value Parser for input scale
-fn validate_scale(arg: &str) -> Result<f32, String> {
-    arg.parse::<f32>()
-        .map_err(|e| format!("Invalid scale value '{}': {}", arg, e))
-        .and_then(|num| {
-            if num <= 0.0 {
-                Err("Scale value must be greater than 0".to_string())
-            } else {
-                Ok(num)
-            }
-        })
-}
-
-fn get_extension(path: &Path) -> String {
-    path.extension()
-        .unwrap_or_default()
-        .to_string_lossy()
-        .to_ascii_lowercase()
-}
-
-fn check_morrowind_directory(dir_path: &str) -> Result<String, String> {
-    let path = std::path::Path::new(dir_path);
-
-    if !path.exists() {
-        return Err(format!("Directory '{}' does not exist.", dir_path));
-    }
-
-    if !path.is_dir() {
-        return Err(format!("'{}' is not a directory.", dir_path));
-    }
-
-    let esm_path = path.join("Morrowind.esm");
-    if !esm_path.exists() {
-        return Err(format!(
-            "'{}' does not appear to be a valid Morrowind directory as it does not contain Morrowind.esm.",
-            dir_path
-        ));
-    }
-
-    Ok(dir_path.to_string())
 }
