@@ -164,7 +164,11 @@ pub enum BroomCommand {
 
         /// Name of the FGD file to save.
         /// If not present, defaults to Morrowind.fgd
-        #[arg(long = "output", short = 'o', default_value = "Morrowind.fgd")]
+        #[arg(
+            long = "output",
+            short = 'o',
+            default_value = "Morrowind.fgd"
+        )]
         output_path: PathBuf,
 
         /// Relative or absolute path to the openmw.cfg file from which to derive the FGD file.
@@ -385,6 +389,65 @@ mod tests {
             assert!(output_path.eq(&PathBuf::from("Morrowind.fgd")));
         } else {
             panic!("expected FGD subcommand");
+        }
+    }
+
+    fn temp_map_file() -> PathBuf {
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("Time went backwards");
+        let path = std::env::temp_dir().join(format!("test_map_{}.map", now.as_nanos()));
+
+        let mut file = File::create(&path).expect("Could not create temp map file");
+        writeln!(file, "// dummy map").unwrap();
+
+        path
+    }
+
+    #[test]
+    fn compile_command_fails_for_missing_map() {
+        let result = MorrobroomArgs::try_parse_from([
+            "morrobroom",
+            "compile",
+            "--map",
+            "path/that/does/not/exist.map",
+        ]);
+
+        assert!(result.is_err(), "Expected failure for missing map file");
+    }
+
+    #[test]
+    fn compile_command_succeeds_for_existing_map() {
+        let path = temp_map_file();
+
+        let result = MorrobroomArgs::try_parse_from([
+            "morrobroom",
+            "compile",
+            "--map",
+            path.to_str().unwrap(),
+            "--output",
+            "Test.omwaddon",
+        ]);
+
+        if let Err(error) = &result {
+            eprintln!("{}", error.to_string())
+        }
+
+        assert!(
+            result.is_ok(),
+            "Expected successful parse with valid map file"
+        );
+
+        // Optionally inspect command output
+        if let Ok(MorrobroomArgs {
+            command: BroomCommand::Compile { map_path, .. },
+        }) = result
+        {
+            assert_eq!(
+                map_path,
+                std::fs::canonicalize(path).unwrap(),
+                "Parsed path should be canonical"
+            );
         }
     }
 }
