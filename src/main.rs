@@ -399,7 +399,7 @@ fn append_cell_reference(
 ) {
     let lowest_available_index = lowest_available_index(&used_indices);
 
-    if let Some(ref mut local_cell) = cell {
+    if let Some(local_cell) = cell {
         local_cell.references.insert(
             (0 as u32, lowest_available_index),
             esp::Reference {
