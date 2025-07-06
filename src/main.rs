@@ -62,7 +62,17 @@ fn main() -> io::Result<()> {
 
     let map_data = MapData::new(&map_string);
 
-    let mut plugin = esp::Plugin::from_path(&output_path).unwrap_or(esp::Plugin::default());
+    let plugin_path = match &output_path {
+        Some(path) => path.to_owned(),
+        None => {
+            let mut plugin_path = map_path.clone();
+            plugin_path.set_extension("omwaddon");
+            plugin_path
+        }
+    };
+
+    let mut plugin = esp::Plugin::from_path(&plugin_path).unwrap_or(esp::Plugin::default());
+
     let mut used_indices: HashSet<u32> = plugin
         .objects_of_type::<Cell>()
         .flat_map(|cell| {
@@ -354,10 +364,10 @@ fn main() -> io::Result<()> {
     plugin.sort_objects();
 
     plugin
-        .save_path(&output_path)
-        .expect(&format!("Saving {} failed!", &output_path.display()));
+        .save_path(&plugin_path)
+        .expect(&format!("Saving {} failed!", &plugin_path.display()));
 
-    println!("Wrote {} to disk successfully.", &output_path.display());
+    println!("Wrote {} to disk successfully.", &plugin_path.display());
 
     Ok(())
 }
