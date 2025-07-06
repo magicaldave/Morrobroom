@@ -1,10 +1,10 @@
 use std::collections::HashSet;
 
 use shalrath;
-use shambler::{brush::BrushId, entity::EntityId, face::FaceId, Vector2 as SV2, Vector3 as SV3};
+use shambler::{Vector2 as SV2, Vector3 as SV3, brush::BrushId, entity::EntityId, face::FaceId};
 use tes3::nif::{NiTriShape, NiTriShapeData};
 
-use crate::{map_data::MapData, surfaces, Mesh};
+use crate::{Mesh, map_data::MapData, surfaces};
 
 macro_rules! define_enum_with_fromstr {
     (
@@ -216,6 +216,7 @@ impl BrushNiNode {
         face_nodes
     }
 
+    /// Given a &str from a parsed map, convert it into a float array
     pub fn get_color(color_str: &str) -> [f32; 3] {
         color_str
             .split_whitespace()
@@ -226,6 +227,8 @@ impl BrushNiNode {
             .expect("Color props value was invalid!")
     }
 
+    // Given a set of faces, expressed by a brush (or brush entity), create a corresponding BrushNiNode
+    // BrushNiNodes contain all the relevant data for a NIF, but aren't quite the nif-ready format
     fn node_from_faces(
         faces: &Vec<FaceId>,
         map_data: &MapData,
@@ -362,14 +365,16 @@ panic!("Critical error: Missing inverted face triangle indices for face_id: {:?}
                 || texture_name.to_ascii_lowercase().contains("mwat")
             {
                 surface_flags |= surfaces::NiBroomSurface::NoClip as u32;
-                println!("{face_id} interpreted as liquid")
+                println!("{face_id} interpreted as liquid, added NoClip flag")
             }
 
+            // Get Texture uvs for this specific face out of parsed map data
             let uv_sets = &map_data
                 .face_uvs
                 .get(&face_id)
                 .expect("Unable to collect face UVs for {face_id}");
 
+            // For any texture that isn't a `clip`, apply the calculated normals, verts, tris, uv sets, and texture
             if texture_name != "clip" {
                 node.normals.extend(
                     if surface_flags & surfaces::NiBroomSurface::SmoothShading as u32 == 0 {
@@ -385,8 +390,7 @@ panic!("Critical error: Missing inverted face triangle indices for face_id: {:?}
                 node.texture = texture_name.to_string();
             }
 
-            // There is minor edge case in this approach where if all faces of an object do not have collision then an empty collision root is created
-            // This is exactly what we want, but, I worry it will have stupid consequences later
+            // The node will always have an RCN, only populate it if the NoClip flag is NOT applied to this surface
             if surface_flags & surfaces::NiBroomSurface::NoClip as u32 == 0 {
                 node.col_verts.extend(*vertices);
                 node.col_tris.push((*indices).to_vec());
