@@ -164,11 +164,7 @@ pub enum BroomCommand {
 
         /// Name of the FGD file to save.
         /// If not present, defaults to Morrowind.fgd
-        #[arg(
-            long = "output",
-            short = 'o',
-            default_value = "Morrowind.fgd"
-        )]
+        #[arg(long = "output", short = 'o', default_value = "Morrowind.fgd")]
         output_path: PathBuf,
 
         /// Relative or absolute path to the openmw.cfg file from which to derive the FGD file.
@@ -411,7 +407,13 @@ mod tests {
             "compile",
             "--map",
             "path/that/does/not/exist.map",
+            "--output",
+            "Test.omwaddon",
         ]);
+
+        if let Err(error) = &result {
+            eprintln!("{}", error.to_string())
+        }
 
         assert!(result.is_err(), "Expected failure for missing map file");
     }
