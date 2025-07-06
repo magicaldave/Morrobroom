@@ -159,10 +159,10 @@ impl MapData {
         }
     }
 
-    pub fn collect_textures(textures: &Textures) -> HashSet<String> {
+    pub fn collect_textures(textures: &Textures) -> HashSet<&String> {
         textures
             .iter()
-            .map(|(_, texture_name)| texture_name.to_string())
+            .map(|(_, texture_name)| texture_name)
             .collect()
     }
 
@@ -185,7 +185,7 @@ impl MapData {
          })
     }
 
-    pub fn find_textures_in_vfs(textures: &HashSet<String>) -> HashSet<String> {
+    pub fn find_textures_in_vfs(textures: &HashSet<&String>) -> HashSet<String> {
         let config = get_config().expect("Openmw.cfg not detected! Please ensure you have a valid openmw configuration file in the canonical system directory.");
         textures
             .iter()
