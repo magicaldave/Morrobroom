@@ -9,6 +9,8 @@ use clap::{Arg, Command};
 use shambler::Vector3 as SV3;
 use tes3::esp::{self, Cell, EditorId, Header, Plugin, Static, TES3Object};
 
+use morrobroom::get_prop;
+
 mod brush_ni_node;
 use brush_ni_node::BrushNiNode;
 mod map_data;
@@ -563,11 +565,4 @@ fn check_morrowind_directory(dir_path: &str) -> Result<String, String> {
     }
 
     Ok(dir_path.to_string())
-}
-
-fn get_prop(prop_name: &str, prop_map: &HashMap<&String, &String>) -> String {
-    prop_map
-        .get(&prop_name.to_string())
-        .unwrap_or(&&String::default())
-        .to_string()
 }
