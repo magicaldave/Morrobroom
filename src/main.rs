@@ -533,11 +533,12 @@ fn validate_mode(arg: &str) -> Result<String, String> {
     }
 }
 
+/// Value Parser for input scale
 fn validate_scale(arg: &str) -> Result<f32, String> {
     arg.parse::<f32>()
         .map_err(|e| format!("Invalid scale value '{}': {}", arg, e))
         .and_then(|num| {
-            if num == 0.0 {
+            if num <= 0.0 {
                 Err("Scale value must be greater than 0".to_string())
             } else {
                 Ok(num)
