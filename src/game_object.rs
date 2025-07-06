@@ -1,4 +1,3 @@
-use crate::surfaces;
 use std::collections::HashMap;
 use tes3::esp::{
     Activator, Alchemy, AlchemyData, AlchemyFlags, Apparatus, ApparatusData, Armor, ArmorData,
@@ -101,7 +100,7 @@ pub fn book(entity_props: &HashMap<&String, &String>, ref_id: &str, mesh_name: &
         mesh: mesh_name.to_owned(),
         icon: get_prop("Icon", entity_props),
         enchanting: get_prop("Enchantment", entity_props),
-        text: surfaces::BOOK_START_DEFAULT.to_owned() + &get_prop("Text", entity_props) + "<BR>",
+        text: String::default(),
         data: BookData {
             weight: get_prop("Weight", entity_props)
                 .parse::<f32>()
