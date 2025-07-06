@@ -243,8 +243,8 @@ fn main() -> io::Result<()> {
         mesh.worldspace_position = Mesh::centroid(&mesh.node_distances) * (object_scale as f32);
 
         mesh.mangle = match get_prop("mangle", &prop_map) {
-            None => *get_rotation(&"0 0 0".to_string()),
-            Some(mangle) => *get_rotation(&mangle),
+            None => get_rotation(&"0 0 0".to_string()),
+            Some(mangle) => get_rotation(&mangle),
         };
 
         // Also use linked groups to determine if the mesh & base def should be ignored
@@ -419,7 +419,7 @@ fn append_cell_reference(
     }
 }
 
-fn get_rotation(str: &String) -> Box<[f32; 3]> {
+fn get_rotation(str: &String) -> [f32; 3] {
     let rot: Vec<&str> = str.split_whitespace().collect();
     let mut array = [0.0f32; 3];
 
@@ -427,7 +427,7 @@ fn get_rotation(str: &String) -> Box<[f32; 3]> {
         array[index] = axis.parse::<f32>().unwrap_or_default().to_radians();
     }
 
-    Box::new([array[2], array[0], array[1]])
+    [array[2], array[0], array[1]]
 }
 
 /// Should probably make some specific struct for handling ESP objects
