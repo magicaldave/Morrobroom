@@ -108,8 +108,9 @@ impl Mesh {
         let _ = self.stream.save_path(name);
     }
 
+    /// Calculate the sum of all dimensions using fold.
+    /// This should return the absolute center of the given point cloud
     pub fn centroid(vertices: &Vec<SV3>) -> SV3 {
-        // Calculate the sum of all dimensions using fold
         vertices
             .iter()
             .fold(SV3::default(), |acc, v| acc + *v)
