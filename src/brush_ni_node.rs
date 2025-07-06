@@ -429,33 +429,38 @@ panic!("Critical error: Missing inverted face triangle indices for face_id: {:?}
         faces_with_matching_textures
     }
 
-    fn to_nif_format(shape_data: &mut NiTriShapeData, verts: &Vec<SV3>, tris: &Vec<Vec<usize>>) {
-        if verts.len() == 0 {
+    /// Renumbers triangles appropriately, then switches the Y and Z coordinates of every vertex
+    /// Quake is Y-up, and the triangles are numbered differently (since they're not collected into a mesh like we do)
+    fn to_nif_format(
+        shape_data: &mut NiTriShapeData,
+        verts: &mut Vec<SV3>,
+        tris: &mut Vec<Vec<usize>>,
+    ) {
+        if verts.is_empty() {
             return;
         };
 
         let mut verts_used = 0;
-        let mut fixed_tris: Vec<[u16; 3]> = Vec::new();
 
-        for face_tris in tris.iter() {
-            fixed_tris.extend(face_tris.chunks_exact(3).map(|chunk| {
-                [
-                    (chunk[0] + verts_used) as u16,
-                    (chunk[1] + verts_used) as u16,
-                    (chunk[2] + verts_used) as u16,
-                ]
-            }));
+        tris.into_iter().for_each(|face_tris| {
+            shape_data
+                .triangles
+                .extend(face_tris.chunks_exact(3).map(|chunk| {
+                    [
+                        (chunk[0] + verts_used) as u16,
+                        (chunk[1] + verts_used) as u16,
+                        (chunk[2] + verts_used) as u16,
+                    ]
+                }));
 
             verts_used += face_tris.into_iter().collect::<HashSet<_>>().len();
-        }
+        });
 
-        shape_data.triangles = fixed_tris;
-
-        for vertex in verts {
+        verts.into_iter().for_each(|vert| {
             shape_data
                 .vertices
-                .push([vertex[0] as f32, vertex[1] as f32, vertex[2] as f32].into());
-        }
+                .push([vert[0] as f32, vert[1] as f32, vert[2] as f32].into())
+        });
     }
 
     fn collect(&mut self) {
@@ -463,8 +468,8 @@ panic!("Critical error: Missing inverted face triangle indices for face_id: {:?}
             self.distance_from_origin = Mesh::centroid(&self.vis_verts)
         }
 
-        Self::to_nif_format(&mut self.vis_data, &self.vis_verts, &self.vis_tris);
-        Self::to_nif_format(&mut self.col_data, &self.col_verts, &self.col_tris);
+        Self::to_nif_format(&mut self.vis_data, &mut self.vis_verts, &mut self.vis_tris);
+        Self::to_nif_format(&mut self.col_data, &mut self.col_verts, &mut self.col_tris);
 
         for normal in &self.normals {
             self.vis_data
