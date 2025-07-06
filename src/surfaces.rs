@@ -9,4 +9,14 @@ pub enum NiBroomSurface {
     InvertFaces = 4,
 }
 
+impl std::fmt::Display for NiBroomSurface {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            NiBroomSurface::NoClip => write!(f, "No Clip"),
+            NiBroomSurface::SmoothShading => write!(f, "Smooth Shading"),
+            NiBroomSurface::InvertFaces => write!(f, "Invert Faces"),
+        }
+    }
+}
+
 pub enum NiBroomContent {}
