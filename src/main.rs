@@ -206,6 +206,7 @@ fn main() -> io::Result<()> {
                 }
                 "worldspawn" => {
                     let mut local_cell = game_object::cell(&prop_map);
+
                     if local_cell.name.is_empty() {
                         local_cell.name = map_dir.clone();
                     }
@@ -213,19 +214,22 @@ fn main() -> io::Result<()> {
                     processed_base_objects.extend([local_cell.name.clone(), ref_id.clone()]);
 
                     cell = Some(local_cell);
-                    mesh.game_object = TES3Object::Static(Static {
+
+                    mesh.game_object = Static {
                         id: ref_id.to_owned(),
                         mesh: mesh_name.to_owned(),
                         flags: esp::ObjectFlags::default(),
-                    });
+                    }
+                    .into();
                 }
                 "world_Detail" => {
                     processed_base_objects.insert(ref_id.clone());
-                    mesh.game_object = TES3Object::Static(Static {
+                    mesh.game_object = Static {
                         id: ref_id.to_owned(),
                         mesh: mesh_name.to_owned(),
                         ..Default::default()
-                    })
+                    }
+                    .into()
                 }
                 _ => {
                     println!(
