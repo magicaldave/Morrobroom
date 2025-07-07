@@ -1,7 +1,7 @@
 use std::{
     borrow::Cow,
     cmp::min,
-    collections::{HashMap, HashSet},
+    collections::{BTreeSet, HashMap, HashSet},
     io,
 };
 
@@ -9,7 +9,7 @@ use clap::Parser;
 use shambler::Vector3 as SV3;
 use tes3::esp::{self, Cell, EditorId, Header, Plugin, Static, TES3Object};
 
-use morrobroom::{create_workdir, get_prop};
+use morrobroom::{FindLowest, create_workdir, get_prop};
 
 mod broom_args;
 use broom_args::{BroomCommand, MorrobroomArgs};
@@ -74,16 +74,18 @@ fn main() -> io::Result<()> {
 
     let mut plugin = esp::Plugin::from_path(&plugin_path).unwrap_or(esp::Plugin::default());
 
-    let mut used_indices: HashSet<u32> = plugin
-        .objects_of_type::<Cell>()
-        .flat_map(|cell| {
-            cell.references.iter().filter_map(
-                |((mast_idx, ref_idx), _reference)| {
-                    if *mast_idx == 0 { Some(*ref_idx) } else { None }
-                },
-            )
-        })
-        .collect();
+    let mut used_indices =
+        plugin
+            .objects_of_type::<Cell>()
+            .fold(BTreeSet::new(), |mut acc, cell| {
+                acc.extend(
+                    cell.references
+                        .iter()
+                        .filter(|((mast_idx, _), _)| *mast_idx == 0)
+                        .map(|((_, ref_idx), _)| *ref_idx),
+                );
+                acc
+            });
 
     assert!(
         map_data.geomap.entity_brushes.len() > 0,
@@ -277,7 +279,7 @@ fn main() -> io::Result<()> {
 
     for entity_id in map_data.geomap.point_entities.iter() {
         let prop_map = map_data.get_entity_properties(entity_id);
-        let lowest_available_index = lowest_available_index(&used_indices);
+        let lowest_available_index = &used_indices.find_lowest();
 
         match prop_map
             .get(&"classname".to_string())
@@ -398,18 +400,14 @@ fn point_entity_position(scale_mode: &f32, prop_map: &HashMap<&String, &String>)
     SV3::new(coords[0], coords[1], coords[2]) * (*scale_mode)
 }
 
-fn lowest_available_index(used_indices: &HashSet<u32>) -> u32 {
-    (1..).find(|&n| !used_indices.contains(&n)).unwrap_or(1)
-}
-
 fn append_cell_reference(
-    used_indices: &mut HashSet<u32>,
+    used_indices: &mut BTreeSet<u32>,
     cell: &mut Option<Cell>,
     ref_id: String,
     translation: SV3,
     rotation: [f32; 3],
 ) {
-    let lowest_available_index = lowest_available_index(&used_indices);
+    let lowest_available_index = used_indices.find_lowest();
 
     if let Some(local_cell) = cell {
         local_cell.references.insert(
