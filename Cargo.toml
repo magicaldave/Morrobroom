@@ -9,7 +9,7 @@ delaunator = "1.0.2"
 imagesize = "0.14.0"
 mimalloc = "0.1.47"
 nalgebra = "0.33.2"
-vfstool_lib = "0.1.0"
+vfstool_lib = "0.2.3"
 openmw-cfg = "0.5.2"
 shalrath = "0.2.5"
 rayon = "1.10.0"
@@ -21,7 +21,7 @@ branch = "main"
 features = ["esp", "nif"]
 
 [dependencies.openmw-config]
-version = "0.1.5"
+version = "0.1.92"
 
 [dependencies.shambler]
 git = "https://github.com/magicaldave/shambler"
