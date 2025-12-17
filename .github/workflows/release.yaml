@@ -1,43 +1,30 @@
-name: release
-permissions:
-  contents: write
+name: Corprus Crucible Manufacturing
 
 on:
   workflow_dispatch:
-  push:
   pull_request:
-    branches: [v2.1]
+  push:
+    branches: main
+    tags: ['*']
 
 jobs:
-  build:
+  release:
     strategy:
       matrix:
-        os: [macos-latest, ubuntu-latest, windows-latest]
-        include:
-          - os: macos-latest
-            binary: morrobroom
-            archive: macos-latest.zip
-          - os: ubuntu-latest
-            binary: morrobroom
-            archive: ubuntu-latest.zip
-          - os: windows-latest
-            binary: morrobroom.exe
-            archive: windows-latest.zip
+        os: [macos-latest, macos-15-intel, ubuntu-latest, windows-latest]
+    
     runs-on: ${{ matrix.os }}
+    
+    permissions:
+      contents: write
+      id-token: write
+    
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@nightly
-
-      - name: build
-        run: cargo build --release
-
-      - name: compress
-        run: 7z a -tzip ${{ matrix.archive }} ./target/release/${{ matrix.binary }}
-
-      - name: upload
-        uses: softprops/action-gh-release@v1
+      
+      - name: Run Corprus Crucible
+        uses: DreamWeave-MP/StroggForge/.github/actions/corprus-crucible@v1
         with:
-          tag_name: Latest
-          files: ${{ matrix.archive }}
-          body: |
-            Latest CI build of Morrobroom
+          binary_name: 'morrobroom'
+          vt_api_key: ${{ secrets.VT_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
